@@ -1,0 +1,11 @@
+Items: {
+	ExampleAggregateSender: {
+		DisplayName: Example Aggregate Sender
+		Tooltip: ""
+	}
+
+	ExamplePacketSender: {
+		DisplayName: Example Packet Sender
+		Tooltip: ""
+	}
+}
