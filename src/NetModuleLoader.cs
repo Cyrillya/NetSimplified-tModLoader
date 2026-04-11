@@ -147,7 +147,7 @@ public class NetModuleLoader : ModSystem
         }
     }
 
-    public static void Register(NetModule netModule) {
+    public static T Register<T>(T netModule) where T : NetModule {
         _modules ??= new List<NetModule>();
         FieldInfos ??= new Dictionary<string, FieldInfo[]>();
 
@@ -194,6 +194,8 @@ public class NetModuleLoader : ModSystem
             IsTypeSupported(fieldInfo.FieldType));
         var fieldInfos = fields as FieldInfo[] ?? fields.ToArray();
         if (fieldInfos.Any()) FieldInfos[netModule.Name] = fieldInfos.ToArray();
+
+        return netModule;
     }
 
     /// <summary>
