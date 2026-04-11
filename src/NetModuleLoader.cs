@@ -10,7 +10,6 @@ namespace NetSimplified;
 
 /// <summary>
 ///     用于加载 <see cref="NetModule" /> 的类。
-///     需要在 <see cref="Mod.Load" /> 中对此类调用 <see cref="Mod.AddContent" /> 以添加实质内容
 /// </summary>
 public class NetModuleLoader : ModSystem
 {
@@ -58,8 +57,8 @@ public class NetModuleLoader : ModSystem
 
 
     /// <summary>
-    ///     从指定程序集加载并注册所有继承自 AutoSyncType 的类型（需要无参构造函��）<br />
-    ///     模组应在调用 Register 或 LoadNetModulesFrom 前先调用此方法以确保 AutoSyncType 已注册。<br />
+    ///     从指定程序集加载并注册所有继承自 AutoSyncType 的类型<br/>
+    ///     模组应在调用 Register 或 LoadNetModulesFrom 前先调用此方法以确保 AutoSyncType 已注册。<br/>
     ///     在调用前，请先设置 <see cref="Mod" /> 字段，以确保 NetModule 能正确设置 Mod 字段。建议在 <see cref="Mod.Load" /> 中设置。之后可通过 <see cref="NetModule.Mod" /> 访问。
     /// </summary>
     public static void LoadAutoSyncsFrom(Assembly asm) {
@@ -98,7 +97,7 @@ public class NetModuleLoader : ModSystem
 
                     var adapter = new ReflectiveAutoSyncAdapter(associatedType, obj, sendMethod, readMethod, customAttrType);
                     AutoSyncHandler.RegisterType(adapter);
-                    CurrentMod?.Logger.Info($"已为类型 {adapter.Type} 绑定 外部 AutoSyncType 适配器: {type.Name}");
+                    CurrentMod?.Logger.Info($"已为类型 {adapter.Type} 绑定外部 AutoSyncType 适配器: {type.Name}");
                 }
                 catch {
                     // 忽略无法实例化或适配的 AutoSyncType
@@ -117,7 +116,7 @@ public class NetModuleLoader : ModSystem
     /// </summary>
     public static void LoadNetModules() {
         LoadNetModulesFrom(typeof(NetModuleLoader).Assembly);
-        LoadNetModulesFrom(Assembly.GetExecutingAssembly());
+        LoadNetModulesFrom(Assembly.GetCallingAssembly());
     }
 
     /// <summary>
