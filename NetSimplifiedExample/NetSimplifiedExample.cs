@@ -20,9 +20,8 @@ public class NetSimplifiedExample : Mod
         NetModuleLoader.LoadAutoSyncsFrom(typeof(NetModuleLoader).Assembly);
         NetModuleLoader.LoadAutoSyncsFrom(Assembly.GetExecutingAssembly());
 
-        // 从示例程序集与基础库中加载并注册 NetModule 实例
-        NetModuleLoader.LoadNetModulesFrom(typeof(NetModuleLoader).Assembly);
-        NetModuleLoader.LoadNetModulesFrom(Assembly.GetExecutingAssembly());
+        // 加载并注册 NetModule 实例
+        NetModuleLoader.LoadNetModules();
     }
 
     // 这里的 Call 用于处理附属模组的调用请求，附属模组通过 Mod.Call 进行调用，参数 args 的第一个元素为方法名，之后为参数列表

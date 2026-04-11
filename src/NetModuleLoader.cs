@@ -111,9 +111,18 @@ public class NetModuleLoader : ModSystem
     }
 
     /// <summary>
-    ///     从指定程序集加载并注册所有继承自 NetModule 的类型（需要无参构造函数）。<br />
-    ///     在调用前，请先确保所有所需的 AutoSyncType 已通过 <see cref="LoadAutoSyncsFrom" /> 注册，以免出现 AutoSyncType 未注册导致的错误。<br />
-    ///     在调用前，请先设置 <see cref="Mod" /> 字段，以确保 NetModule 能正确设置 Mod 字段。建议在 <see cref="Mod.Load" /> 中设置。之后可通过 <see cref="NetModule.Mod" /> 访问。
+    ///     加载并注册所有继承自 NetModule 的类型。 <br/>
+    ///     在调用前，请先确保所有所需的 AutoSyncType 已通过 <see cref="LoadAutoSyncsFrom" /> 注册，以免出现 AutoSyncType 未注册导致的错误。<br/>
+    ///     在调用前，请先设置 <see cref="Mod" /> 字段，以确保 NetModule 能正确设置 Mod 字段。建议在 <see cref="Mod.Load" /> 中设置。
+    /// </summary>
+    public static void LoadNetModules() {
+        LoadNetModulesFrom(typeof(NetModuleLoader).Assembly);
+        LoadNetModulesFrom(Assembly.GetExecutingAssembly());
+    }
+
+    /// <summary>
+    ///     从指定程序集加载并注册所有继承自 NetModule 的类型。<br/>
+    ///     原本用于支持加载其他模组的 NetModule，但实际上无法实现，因此现在不需要调用此方法，直接调用 LoadNetModules() 即可。
     /// </summary>
     public static void LoadNetModulesFrom(Assembly asm) {
         if (asm == null) return;
