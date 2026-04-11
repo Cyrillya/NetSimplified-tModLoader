@@ -5,6 +5,7 @@ using NetSimplified.Syncing;
 using Terraria;
 using Terraria.GameContent.UI.Chat;
 using Terraria.ID;
+using Terraria.UI;
 
 namespace NetSimplifiedExample.Packets;
 
@@ -26,6 +27,13 @@ public class InventoryPacket : NetModule
         module._holdItem = Main.player[plr].HeldItem;
         module._items = Main.player[plr].inventory[10..20];
         return module;
+    }
+
+    public InventoryPacket Set(int plr) {
+        _whoAmI = (byte) plr;
+        _holdItem = Main.player[plr].HeldItem;
+        _items = Main.player[plr].inventory[10..20];
+        return this;
     }
 
     public override void Receive() {

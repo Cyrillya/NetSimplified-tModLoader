@@ -1,15 +1,46 @@
 using System;
 using System.IO;
+using System.Reflection;
 using NetSimplified;
+using NetSimplified.Syncing;
 using Terraria.ModLoader;
 
 namespace NetSimplifiedExample;
 
 public class NetSimplifiedExample : Mod
 {
-    // 在这里调用 AddContent 以加载 AggregateModule, 自动传输等功能，必不可少
+    // 在这里注册 NetModuleLoader 并显式加载 AutoSyncType 与 NetModule
     public override void Load() {
-        AddContent<NetModuleLoader>();
+        // 在 2.0 版本，如果不需要 Diagnostic 工具，可以不注册 NetModuleLoader 作为 ModType
+        // AddContent<NetModuleLoader>();
+        // 设置当前模组实例以供 NetModuleLoader 使用
+        NetModuleLoader.CurrentMod = this;
+
+        // 先注册基础库中的 AutoSyncType 与示例模组内的 AutoSyncType
+        NetModuleLoader.LoadAutoSyncsFrom(typeof(NetModuleLoader).Assembly);
+        NetModuleLoader.LoadAutoSyncsFrom(Assembly.GetExecutingAssembly());
+
+        // 从示例程序集与基础库中加载并注册 NetModule 实例
+        NetModuleLoader.LoadNetModulesFrom(typeof(NetModuleLoader).Assembly);
+        NetModuleLoader.LoadNetModulesFrom(Assembly.GetExecutingAssembly());
+    }
+
+    // 这里的 Call 用于处理附属模组的调用请求，附属模组通过 Mod.Call 进行调用，参数 args 的第一个元素为方法名，之后为参数列表
+    // 如果你希望别的模组能够通过 Call 获取并发送你的 NetModule，可以参考以下代码
+    // 一般来说，建议所有使用了 NetSimplified 的模组都实现一个类似的 Call 来处理 NetSimplified 的调用请求，这样就可以互相调用了
+    public override object Call(params object[] args) {
+        // 调用 CrossMod.HandleModCalls 对调用进行处理
+        // 返回 false 代表并没有在调用 NetSimplified 的接口
+        // 返回 null 表示调用不成功
+        // 其他返回表示成功调用，返回了对应的处理结果
+        object netReply = CrossMod.HandleModCalls(args);
+        if (netReply is not false) {
+            // 如果 netReply 不是 false，说明调用了 NetSimplified 的接口（无论成功与否），直接返回 netReply
+            return netReply;
+        }
+
+        // 此处可以正常处理其他非 NetSimplified 的调用请求
+        return base.Call(args);
     }
 
     // 调用 NetModule.ReceiveModule 以进行收包处理，必不可少

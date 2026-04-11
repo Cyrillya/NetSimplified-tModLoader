@@ -28,6 +28,16 @@
         <member name="M:NetSimplified.AggregateModule.Receive">
             <inheritdoc/>
         </member>
+        <member name="P:NetSimplified.AutoSyncType.Type">
+            <summary>
+            此 AutoSyncType 关联的类型（例如 Color / Item / bool）
+            </summary>
+        </member>
+        <member name="P:NetSimplified.AutoSyncType.CustomAttributeType">
+            <summary>
+            可选：此 AutoSyncType 对应的自定义属性类型（例如 ColorSyncAttribute / ItemSyncAttribute）
+            </summary>
+        </member>
         <member name="T:NetSimplified.Extensions">
             <summary>
             发包的一些实用方法
@@ -96,6 +106,7 @@
         <member name="T:NetSimplified.NetModule">
             <summary>
             用于写入、读取 <see cref="T:Terraria.ModLoader.ModPacket"/> 的基类
+            注：NetModule 不再继承 ModType，需由 NetModuleLoader 手动加载/注册。
             </summary>
         </member>
         <member name="P:NetSimplified.NetModule.Sender">
@@ -103,6 +114,12 @@
         </member>
         <member name="P:NetSimplified.NetModule.Type">
             <summary>该 <see cref="T:NetSimplified.NetModule"/> 被分配到的ID</summary>
+        </member>
+        <member name="P:NetSimplified.NetModule.Mod">
+            <summary>关联的 Mod 实例（由 NetModuleLoader 在注册时设置）</summary>
+        </member>
+        <member name="P:NetSimplified.NetModule.Name">
+            <summary>模块显示名（默认为类型名，可重写）</summary>
         </member>
         <member name="M:NetSimplified.NetModule.Send(Terraria.ModLoader.ModPacket)">
             <summary>
@@ -117,6 +134,7 @@
             <param name="toClient">如果不是 -1, 则包<b>只会</b>发送给对应的客户端</param>
             <param name="ignoreClient">如果不是 -1, 则包<b>不会</b>发送给对应的客户端</param>
             <param name="runLocally">如果为 <see langword="true"/> 则在发包时会调用 <see cref="M:NetSimplified.NetModule.Receive"/> 方法</param>
+            <param name="handler">自定义的自动传输处理器</param>
         </member>
         <member name="M:NetSimplified.NetModule.Read(System.IO.BinaryReader)">
             <summary>
@@ -157,21 +175,40 @@
             用于记录各 NetModule 的传输量
             </summary>
         </member>
+        <member name="F:NetSimplified.NetModuleLoader.CurrentMod">
+            <summary>
+            当前模组实例，必须在调用 <see cref="M:NetSimplified.NetModuleLoader.LoadNetModulesFrom(System.Reflection.Assembly)"/> 前设置，以确保 NetModule 能正确设置 Mod 字段。建议在 <see cref="M:Terraria.ModLoader.Mod.Load"/> 中设置。之后可通过 <see cref="P:NetSimplified.NetModule.Mod"/> 访问
+            </summary>
+        </member>
         <member name="M:NetSimplified.NetModuleLoader.PostSetupContent">
             <inheritdoc />
         </member>
         <member name="M:NetSimplified.NetModuleLoader.PreSaveAndQuit">
             <inheritdoc />
         </member>
-        <member name="M:NetSimplified.NetModuleLoader.Load">
-            <inheritdoc />
+        <member name="M:NetSimplified.NetModuleLoader.LoadAutoSyncsFrom(System.Reflection.Assembly)">
+            <summary>
+            从指定程序集加载并注册所有继承自 AutoSyncType 的类型（需要无参构造函��）<br/>
+            模组应在调用 Register 或 LoadNetModulesFrom 前先调用此方法以确保 AutoSyncType 已注册。<br/>
+            在调用前，请先设置 <see cref="T:Terraria.ModLoader.Mod"/> 字段，以确保 NetModule 能正确设置 Mod 字段。建议在 <see cref="M:Terraria.ModLoader.Mod.Load"/> 中设置。之后可通过 <see cref="P:NetSimplified.NetModule.Mod"/> 访问。
+            </summary>
         </member>
-        <member name="M:NetSimplified.NetModuleLoader.Unload">
-            <inheritdoc />
+        <member name="M:NetSimplified.NetModuleLoader.LoadNetModulesFrom(System.Reflection.Assembly)">
+            <summary>
+            从指定程序集加载并注册所有继承自 NetModule 的类型（需要无参构造函数）。<br/>
+            在调用前，请先确保所有所需的 AutoSyncType 已通过 <see cref="M:NetSimplified.NetModuleLoader.LoadAutoSyncsFrom(System.Reflection.Assembly)"/> 注册，以免出现 AutoSyncType 未注册导致的错误。<br/>
+            在调用前，请先设置 <see cref="T:Terraria.ModLoader.Mod"/> 字段，以确保 NetModule 能正确设置 Mod 字段。建议在 <see cref="M:Terraria.ModLoader.Mod.Load"/> 中设置。之后可通过 <see cref="P:NetSimplified.NetModule.Mod"/> 访问。
+            </summary>
         </member>
         <member name="M:NetSimplified.NetModuleLoader.Get(System.Int32)">
             <summary>
             根据 <paramref name="type"/> 获取相应的 <see cref="T:NetSimplified.NetModule"/> 实例
+            </summary>
+            <returns><see cref="T:NetSimplified.NetModule"/> 实例</returns>
+        </member>
+        <member name="M:NetSimplified.NetModuleLoader.Get(System.String)">
+            <summary>
+            根据 <paramref name="name"/> 获取相应的 <see cref="T:NetSimplified.NetModule"/> 实例
             </summary>
             <returns><see cref="T:NetSimplified.NetModule"/> 实例</returns>
         </member>
@@ -185,11 +222,6 @@
             <summary>
             此特性允许变量自动发包传输<br/>
             支持的变量类型: <see cref="T:System.Byte"/> 及其数组类型, <see cref="T:System.Boolean"/>, <see cref="T:System.Int16"/>, <see cref="T:System.Int32"/>, <see cref="T:System.Int64"/>, <see cref="T:System.SByte"/>, <see cref="T:System.UInt16"/>, <see cref="T:System.UInt32"/>, <see cref="T:System.UInt64"/>, <see cref="T:System.Single"/>, <see cref="T:System.Double"/>, <see cref="T:System.String"/>, <see cref="T:Microsoft.Xna.Framework.Vector2"/>, <see cref="T:Microsoft.Xna.Framework.Color"/>, <see cref="T:Microsoft.Xna.Framework.Point"/>, <see cref="T:Terraria.DataStructures.Point16"/>, <see cref="T:Terraria.Item"/> 及其数组类型
-            </summary>
-        </member>
-        <member name="F:NetSimplified.Syncing.AutoSyncHandler.SupportedTypes">
-            <summary>
-            自动传输支持的数据类型
             </summary>
         </member>
         <member name="T:NetSimplified.Syncing.ItemSyncAttribute">

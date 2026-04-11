@@ -5,6 +5,8 @@ VisualStudioVersion = 17.2.32630.192
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetSimplifiedExample", "NetSimplifiedExample\NetSimplifiedExample.csproj", "{29E9A188-544B-4F91-B698-0E530619675B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetSimpExSubmod", "NetSimpExSubmod\NetSimpExSubmod.csproj", "{1C2B2E6E-D87C-4EA7-8D98-3DC71084ABDB}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetSimplified", "src\NetSimplified.csproj", "{AA0D8A4C-D0A8-41DE-ABC4-33180B1896B1}"
 EndProject
 Global
@@ -21,6 +23,10 @@ Global
 		{AA0D8A4C-D0A8-41DE-ABC4-33180B1896B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AA0D8A4C-D0A8-41DE-ABC4-33180B1896B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AA0D8A4C-D0A8-41DE-ABC4-33180B1896B1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C2B2E6E-D87C-4EA7-8D98-3DC71084ABDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C2B2E6E-D87C-4EA7-8D98-3DC71084ABDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C2B2E6E-D87C-4EA7-8D98-3DC71084ABDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C2B2E6E-D87C-4EA7-8D98-3DC71084ABDB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

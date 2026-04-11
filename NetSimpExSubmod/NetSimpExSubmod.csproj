@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="..\tModLoader.targets" />
+    <ItemGroup>
+        <ProjectReference Include="..\src\NetSimplified.csproj">
+            <Project>{00000000-0000-0000-0000-000000000000}</Project>
+            <Name>NetSimplified</Name>
+        </ProjectReference>
+        <ProjectReference Include="..\NetSimplifiedExample\NetSimplifiedExample.csproj">
+            <Project>{00000000-0000-0000-0000-000000000000}</Project>
+            <Name>NetSimplifiedExample</Name>
+        </ProjectReference>
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="lib\" />
+    </ItemGroup>
+</Project>

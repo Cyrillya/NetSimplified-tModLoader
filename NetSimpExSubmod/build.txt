@@ -1,0 +1,5 @@
+displayName = Net Simplified Example Submod
+author = Cyrilly
+version = 1.0
+modReferences = NetSimplifiedExample
+dllReferences = NetSimplified

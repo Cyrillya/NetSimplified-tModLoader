@@ -1,31 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\tModLoader.targets" />
-  <PropertyGroup>
-    <AssemblyName>NetSimplified</AssemblyName>
-    <TargetFramework>net6.0</TargetFramework>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <LangVersion>latest</LangVersion>
-    <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
-    <PackageVersion>1.1.3</PackageVersion>
-    <Title>Net Simplified</Title>
-    <Authors>Cyrilly</Authors>
-    <PackageLicenseUrl>https://github.com/Cyrillya/NetSimplified-tModLoader/blob/master/LICENSE.txt</PackageLicenseUrl>
-    <RepositoryUrl>https://github.com/Cyrillya/NetSimplified-tModLoader</RepositoryUrl>
-    <RepositoryType>DLL Library</RepositoryType>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <AssemblyVersion>1.1.3</AssemblyVersion>
-    <FileVersion>1.1.3</FileVersion>
-    <NeutralLanguage>zh-Hans</NeutralLanguage>
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="NetSimplifiedExample\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Remove="NetSimplifiedExample\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove="NetSimplifiedExample\**" />
-  </ItemGroup>
+    <Import Project="..\tModLoader.targets"/>
+    <PropertyGroup>
+        <AssemblyName>NetSimplified</AssemblyName>
+        <PlatformTarget>AnyCPU</PlatformTarget>
+        <LangVersion>latest</LangVersion>
+        <GenerateDocumentationFile>True</GenerateDocumentationFile>
+        <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+        <PackageVersion>2.0.0</PackageVersion>
+        <Title>Net Simplified</Title>
+        <Authors>Cyrilly</Authors>
+        <PackageLicenseUrl>https://github.com/Cyrillya/NetSimplified-tModLoader/blob/master/LICENSE.txt</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/Cyrillya/NetSimplified-tModLoader</RepositoryUrl>
+        <RepositoryType>DLL Library</RepositoryType>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+        <AssemblyVersion>2.0.0</AssemblyVersion>
+        <FileVersion>2.0.0</FileVersion>
+        <NeutralLanguage>zh-Hans</NeutralLanguage>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Remove="NetSimplifiedExample\**"/>
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Remove="NetSimplifiedExample\**"/>
+    </ItemGroup>
+    <ItemGroup>
+        <None Remove="NetSimplifiedExample\**"/>
+    </ItemGroup>
+
+    <Target Name="CopyOutputToExampleAndSubmodLibs" AfterTargets="Build">
+        <!-- 在构建后将生成的 dll 和 xml 复制到 NetSimplifiedExample/lib 和 NetSimpExSubmod/lib -->
+        <PropertyGroup>
+            <ExampleLibDir>$(MSBuildThisFileDirectory)..\NetSimplifiedExample\lib\</ExampleLibDir>
+            <SubmodLibDir>$(MSBuildThisFileDirectory)..\NetSimpExSubmod\lib\</SubmodLibDir>
+        </PropertyGroup>
+        <MakeDir Directories="$(ExampleLibDir)" Condition="!Exists('$(ExampleLibDir)')"/>
+        <MakeDir Directories="$(SubmodLibDir)" Condition="!Exists('$(SubmodLibDir)')"/>
+        <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ExampleLibDir)" SkipUnchangedFiles="true"/>
+        <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(SubmodLibDir)" SkipUnchangedFiles="true"/>
+        <Copy SourceFiles="$(TargetDir)$(AssemblyName).xml" DestinationFolder="$(ExampleLibDir)" Condition="Exists('$(TargetDir)$(AssemblyName).xml')" SkipUnchangedFiles="true"/>
+        <Copy SourceFiles="$(TargetDir)$(AssemblyName).xml" DestinationFolder="$(SubmodLibDir)" Condition="Exists('$(TargetDir)$(AssemblyName).xml')" SkipUnchangedFiles="true"/>
+    </Target>
 </Project>

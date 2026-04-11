@@ -1,18 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\tModLoader.targets" />
-  <PropertyGroup>
-    <AssemblyName>NetSimplifiedExample</AssemblyName>
-    <TargetFramework>net6.0</TargetFramework>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="tModLoader.CodeAssist" Version="0.1.*" />
+    <ProjectReference Include="..\src\NetSimplified.csproj">
+      <Project>{00000000-0000-0000-0000-000000000000}</Project>
+      <Name>NetSimplified</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="NetSimplified">
-      <HintPath>lib\NetSimplified.dll</HintPath>
-    </Reference>
+    <Folder Include="AutoSyncTypes\" />
   </ItemGroup>
+
+  <Target Name="CopyOutputToSubmodLib" AfterTargets="Build">
+    <!-- 在构建后将生成的 dll 和 xml 复制到 NetSimpExSubmod/lib -->
+    <PropertyGroup>
+      <SubmodLibDir>$(MSBuildThisFileDirectory)..\NetSimpExSubmod\lib\</SubmodLibDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(SubmodLibDir)" Condition="!Exists('$(SubmodLibDir)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(SubmodLibDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).xml" DestinationFolder="$(SubmodLibDir)" Condition="Exists('$(TargetDir)$(AssemblyName).xml')" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

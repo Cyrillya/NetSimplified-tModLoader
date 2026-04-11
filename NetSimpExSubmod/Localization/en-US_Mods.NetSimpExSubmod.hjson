@@ -1,0 +1,13 @@
+# This file will automatically update with entries for new content after a build and reload.
+
+Items: {
+	ExamplePacketSender: {
+		DisplayName: Example Packet Sender
+		Tooltip:
+			'''
+			Template of an item
+			Replacing this tooltip is duty 
+			It's snowing on Mt.Fuji
+			'''
+	}
+}

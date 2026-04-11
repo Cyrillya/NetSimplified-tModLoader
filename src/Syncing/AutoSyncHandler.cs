@@ -1,248 +1,198 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Xna.Framework;
-using Terraria;
-using Terraria.DataStructures;
 
 namespace NetSimplified.Syncing;
 
 internal static class AutoSyncHandler
 {
-    /// <summary>
-    /// 自动传输支持的数据类型
-    /// </summary>
-    public static readonly Type[] SupportedTypes = {
-        typeof(byte), typeof(bool), typeof(short), typeof(int), typeof(long), typeof(sbyte), typeof(ushort),
-        typeof(uint), typeof(ulong), typeof(float), typeof(double), typeof(char), typeof(string), typeof(Vector2),
-        typeof(Color), typeof(Point), typeof(Point16), typeof(Item), typeof(Item[]), typeof(byte[])
-    };
+    public static Dictionary<Type, AutoSyncType> RegisteredAutoSyncTypes = new();
 
-    internal static void HandleAutoSend(NetModule netModule, BinaryWriter bw) {
-        if (!NetModuleLoader.FieldInfos.TryGetValue(netModule.Type, out var fields)) {
+    private static bool IsNonNullableValueType(Type t) {
+        return t.IsValueType && Nullable.GetUnderlyingType(t) == null;
+    }
+
+    public static void RegisterType(AutoSyncType type) {
+        if (type == null) return;
+        RegisteredAutoSyncTypes[type.Type] = type;
+    }
+
+    // Helper: 发送单个值（先尝试已注册类型，再处理集合/数组）
+    public static void SendValue(BinaryWriter bw, object value, Type declaredType, MemberInfo fieldInfo = null) {
+        // 统一 null 支持
+        var needsNullMarker = !IsNonNullableValueType(declaredType);
+        if (needsNullMarker) {
+            bw.Write(value != null);
+            if (value == null) return;
+        }
+
+        // 声明类型的 handler 优先
+        if (RegisteredAutoSyncTypes.TryGetValue(declaredType, out var handler)) {
+            handler.Send(bw, value, fieldInfo);
             return;
         }
 
+        // 数组（支持多维数组 n-dim）
+        if (value is Array arr) {
+            var elemType = arr.GetType().GetElementType() ?? declaredType;
+            // 写入维度数和每个维度的长度（便于支持多维数组）
+            var rank = (byte) arr.Rank;
+            bw.Write(rank);
+            var lengths = new int[rank];
+            for (var i = 0; i < rank; i++) {
+                lengths[i] = arr.GetLength(i);
+                bw.Write(lengths[i]);
+            }
+
+            // 按行优先顺序扁平化写入所有元素
+            foreach (var it in arr) SendValue(bw, it!, elemType, fieldInfo);
+            return;
+        }
+
+        // KeyValuePair<TKey, TValue>
+        if (declaredType.IsGenericType && declaredType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>)) {
+            var args = declaredType.GetGenericArguments();
+            var keyType = args[0];
+            var valueType = args[1];
+
+            if (value == null) {
+                // KeyValuePair is a value type; null only possible if boxed null, handle gracefully
+                SendValue(bw, null, keyType, fieldInfo);
+                SendValue(bw, null, valueType, fieldInfo);
+                return;
+            }
+
+            var ptype = value.GetType();
+            var key = ptype.GetProperty("Key")!.GetValue(value);
+            var val = ptype.GetProperty("Value")!.GetValue(value);
+
+            SendValue(bw, key!, keyType, fieldInfo);
+            SendValue(bw, val!, valueType, fieldInfo);
+            return;
+        }
+
+        // IEnumerable<T>
+        var enumInterfaceDeclared = declaredType.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+        if (enumInterfaceDeclared != null) {
+            var elemType = enumInterfaceDeclared.GetGenericArguments()[0];
+            var enumerable = (IEnumerable) value!;
+            var temp = enumerable.Cast<object?>().ToList();
+            bw.Write(temp.Count);
+            foreach (var it in temp) SendValue(bw, it!, elemType, fieldInfo);
+        }
+
+        // 未注册 handler 且非集合/数组时不写入任何数据（由用户自定义处理）
+    }
+
+    // 读取单个值（声明类型优先，期望存在 null 标记）
+    internal static object ReadValue(BinaryReader r, Type declaredType, MemberInfo fieldInfo = null) {
+        // 统一 null 支持
+        var needsNullMarker = !IsNonNullableValueType(declaredType);
+        if (needsNullMarker) {
+            var has = r.ReadBoolean();
+            if (!has) return null;
+        }
+
+        // 已注册 handler（声明类型优先）
+        if (RegisteredAutoSyncTypes.TryGetValue(declaredType, out var handler)) return handler.Read(r, fieldInfo);
+
+        // 数组（支持多维数组 n-dim）
+        if (declaredType.IsArray) {
+            var elemType = declaredType.GetElementType();
+            // 读取维度和每个维度长度
+            var rank = r.ReadByte();
+            var lengths = new int[rank];
+            var total = 1;
+            for (var i = 0; i < rank; i++) {
+                lengths[i] = r.ReadInt32();
+                total *= lengths[i];
+            }
+
+            var arr = Array.CreateInstance(elemType!, lengths);
+
+            // 扁平读取并按行优先顺序写入到多维数组中
+            for (var flat = 0; flat < total; flat++) {
+                var value = ReadValue(r, elemType!, fieldInfo);
+                var indices = new int[rank];
+                var rem = flat;
+                for (var d = rank - 1; d >= 0; d--) {
+                    var len = lengths[d];
+                    indices[d] = rem % len;
+                    rem /= len;
+                }
+
+                arr.SetValue(value, indices);
+            }
+
+            return arr;
+        }
+
+        // KeyValuePair<TKey,TValue>
+        if (declaredType.IsGenericType && declaredType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>)) {
+            var args = declaredType.GetGenericArguments();
+            var keyType = args[0];
+            var valueType = args[1];
+            var key = ReadValue(r, keyType, fieldInfo);
+            var val = ReadValue(r, valueType, fieldInfo);
+            var kvType = typeof(KeyValuePair<,>).MakeGenericType(keyType, valueType);
+            return Activator.CreateInstance(kvType, key, val)!;
+        }
+
+        // IEnumerable<T>（支持嵌套）
+        var enumInterface = declaredType.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+        if (enumInterface != null) {
+            var elemType = enumInterface.GetGenericArguments()[0];
+
+            // 读取元素数量
+            var len = r.ReadInt32();
+
+            // 尝试创建目标集合类型
+            object collection;
+            try {
+                collection = Activator.CreateInstance(declaredType) ?? Activator.CreateInstance(typeof(List<>).MakeGenericType(elemType));
+            }
+            catch {
+                collection = Activator.CreateInstance(typeof(List<>).MakeGenericType(elemType));
+            }
+
+            var add = collection.GetType().GetMethod("Add");
+            if (add != null) {
+                for (var i = 0; i < len; i++) add.Invoke(collection, new[] { ReadValue(r, elemType, fieldInfo) });
+                return collection;
+            }
+
+            // 无 Add 时回退为 List<T>
+            var listType = typeof(List<>).MakeGenericType(elemType);
+            var list = (IList) Activator.CreateInstance(listType)!;
+            for (var i = 0; i < len; i++) list.Add(ReadValue(r, elemType, fieldInfo));
+            return list;
+        }
+
+        // 不支持，返回 null（自动忽视）
+        return null;
+    }
+
+    internal static void HandleAutoSend(NetModule netModule, BinaryWriter bw) {
+        if (!NetModuleLoader.FieldInfos.TryGetValue(netModule.Name, out var fields)) return;
+
         foreach (var fieldInfo in fields) {
-            if (fieldInfo.FieldType == typeof(byte)) {
-                bw.Write((byte) fieldInfo.GetValue(netModule)!);
-            }
+            var value = fieldInfo.GetValue(netModule);
+            var declared = fieldInfo.FieldType;
 
-            if (fieldInfo.FieldType == typeof(byte[])) {
-                var buffer = (byte[]) fieldInfo.GetValue(netModule)!;
-                bw.Write(buffer.Length);
-                bw.Write(buffer);
-            }
-
-            if (fieldInfo.FieldType == typeof(bool)) {
-                bw.Write((bool) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(short)) {
-                bw.Write((short) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(int)) {
-                bw.Write((int) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(long)) {
-                bw.Write((long) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(sbyte)) {
-                bw.Write((sbyte) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(ushort)) {
-                bw.Write((ushort) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(uint)) {
-                bw.Write((uint) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(ulong)) {
-                bw.Write((ulong) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(float)) {
-                bw.Write((float) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(double)) {
-                bw.Write((double) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(char)) {
-                bw.Write((char) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(string)) {
-                bw.Write((string) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(Vector2)) {
-                bw.WriteVector2((Vector2) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(Point)) {
-                bw.Write((Point) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(Point16)) {
-                bw.Write((Point16) fieldInfo.GetValue(netModule)!);
-            }
-
-            if (fieldInfo.FieldType == typeof(Color)) {
-                var syncAlpha = true;
-                if (TryGetCustomAttribute<ColorSyncAttribute>(fieldInfo, out var colorSyncAttr)) {
-                    syncAlpha = colorSyncAttr.SyncAlpha;
-                }
-
-                if (syncAlpha) {
-                    bw.WriteRGBA((Color) fieldInfo.GetValue(netModule)!);
-                }
-                else {
-                    bw.WriteRGB((Color) fieldInfo.GetValue(netModule)!);
-                }
-            }
-
-            bool syncStack = true;
-            bool syncFavorite = false;
-
-            if (Attribute.IsDefined(fieldInfo, typeof(ItemSyncAttribute))) {
-                var attr = fieldInfo.GetCustomAttribute(typeof(ItemSyncAttribute));
-                if (attr is ItemSyncAttribute itemSyncAttr) {
-                    syncStack = itemSyncAttr.SyncStack;
-                    syncFavorite = itemSyncAttr.SyncFavorite;
-                }
-            }
-
-            if (fieldInfo.FieldType == typeof(Item)) {
-                bw.Write((Item) fieldInfo.GetValue(netModule)!, syncStack, syncFavorite);
-            }
-
-            if (fieldInfo.FieldType == typeof(Item[])) {
-                bw.Write((Item[]) fieldInfo.GetValue(netModule)!, syncStack, syncFavorite);
-            }
+            SendValue(bw, value, declared, fieldInfo);
         }
     }
 
     internal static void HandleAutoRead(NetModule netModule, BinaryReader r) {
-        if (!NetModuleLoader.FieldInfos.TryGetValue(netModule.Type, out var fields)) {
-            return;
-        }
+        if (!NetModuleLoader.FieldInfos.TryGetValue(netModule.Name, out var fields)) return;
 
         foreach (var fieldInfo in fields) {
-            if (fieldInfo.FieldType == typeof(byte)) {
-                fieldInfo.SetValue(netModule, r.ReadByte());
-            }
-
-            if (fieldInfo.FieldType == typeof(byte[])) {
-                int length = r.ReadInt32();
-                fieldInfo.SetValue(netModule, r.ReadBytes(length));
-            }
-
-            if (fieldInfo.FieldType == typeof(bool)) {
-                fieldInfo.SetValue(netModule, r.ReadBoolean());
-            }
-
-            if (fieldInfo.FieldType == typeof(short)) {
-                fieldInfo.SetValue(netModule, r.ReadInt16());
-            }
-
-            if (fieldInfo.FieldType == typeof(int)) {
-                fieldInfo.SetValue(netModule, r.ReadInt32());
-            }
-
-            if (fieldInfo.FieldType == typeof(long)) {
-                fieldInfo.SetValue(netModule, r.ReadInt64());
-            }
-
-            if (fieldInfo.FieldType == typeof(sbyte)) {
-                fieldInfo.SetValue(netModule, r.ReadSByte());
-            }
-
-            if (fieldInfo.FieldType == typeof(ushort)) {
-                fieldInfo.SetValue(netModule, r.ReadUInt16());
-            }
-
-            if (fieldInfo.FieldType == typeof(uint)) {
-                fieldInfo.SetValue(netModule, r.ReadUInt32());
-            }
-
-            if (fieldInfo.FieldType == typeof(ulong)) {
-                fieldInfo.SetValue(netModule, r.ReadUInt64());
-            }
-
-            if (fieldInfo.FieldType == typeof(float)) {
-                fieldInfo.SetValue(netModule, r.ReadSingle());
-            }
-
-            if (fieldInfo.FieldType == typeof(double)) {
-                fieldInfo.SetValue(netModule, r.ReadDouble());
-            }
-
-            if (fieldInfo.FieldType == typeof(char)) {
-                fieldInfo.SetValue(netModule, r.ReadChar());
-            }
-
-            if (fieldInfo.FieldType == typeof(string)) {
-                fieldInfo.SetValue(netModule, r.ReadString());
-            }
-
-            if (fieldInfo.FieldType == typeof(Vector2)) {
-                fieldInfo.SetValue(netModule, r.ReadVector2());
-            }
-
-            if (fieldInfo.FieldType == typeof(Point)) {
-                fieldInfo.SetValue(netModule, r.ReadPoint());
-            }
-
-            if (fieldInfo.FieldType == typeof(Point16)) {
-                fieldInfo.SetValue(netModule, r.ReadPoint16());
-            }
-
-            if (fieldInfo.FieldType == typeof(Color)) {
-                var syncAlpha = true;
-                if (TryGetCustomAttribute<ColorSyncAttribute>(fieldInfo, out var colorSyncAttr)) {
-                    syncAlpha = colorSyncAttr.SyncAlpha;
-                }
-
-                fieldInfo.SetValue(netModule, syncAlpha ? r.ReadRGBA() : r.ReadRGB());
-            }
-
-            bool syncStack = true;
-            bool syncFavorite = false;
-
-            if (TryGetCustomAttribute<ItemSyncAttribute>(fieldInfo, out var itemSyncAttr)) {
-                syncStack = itemSyncAttr.SyncStack;
-                syncFavorite = itemSyncAttr.SyncFavorite;
-            }
-
-            if (fieldInfo.FieldType == typeof(Item)) {
-                fieldInfo.SetValue(netModule, r.ReadItem(syncStack, syncFavorite));
-            }
-
-            if (fieldInfo.FieldType == typeof(Item[])) {
-                fieldInfo.SetValue(netModule, r.ReadItemArray(syncStack, syncFavorite));
-            }
+            var declared = fieldInfo.FieldType;
+            var value = ReadValue(r, declared, fieldInfo);
+            fieldInfo.SetValue(netModule, value);
         }
-    }
-
-    private static bool TryGetCustomAttribute<T>(MemberInfo fieldInfo, out T attribute) where T : Attribute {
-        if (Attribute.IsDefined(fieldInfo, typeof(T))) {
-            var customAttribute = fieldInfo.GetCustomAttribute(typeof(T));
-            if (customAttribute is T attr) {
-                attribute = attr;
-                return true;
-            }
-        }
-
-        attribute = null;
-        return false;
     }
 }
