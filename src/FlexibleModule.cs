@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using NetSimplified.Syncing;
 using Terraria.ModLoader;
 
@@ -31,6 +32,7 @@ public sealed class FlexibleModule : NetModule
     private readonly string _name;
     private readonly Action _receiveAction;
     private readonly Type[] _fieldTypes;
+    private readonly MemberInfo[] _memberInfos;
 
     private object[] _values;
 
@@ -46,21 +48,42 @@ public sealed class FlexibleModule : NetModule
     ///     该包所包含的字段类型数组，所有类型必须已通过
     ///     <see cref="NetModuleLoader.LoadAutoSyncsFrom" /> 注册了对应的 <see cref="AutoSyncType" />
     /// </param>
+    /// <param name="attributes">
+    ///     可选：与 <paramref name="args" /> 一一对应的 <see cref="Attribute" /> 数组，用于控制各字段的自动传输行为
+    ///     （例如 <see cref="Syncing.ItemSyncAttribute" />、<see cref="Syncing.ColorSyncAttribute" />）。
+    ///     数组中的每项均可为 <see langword="null" />，表示该字段无额外属性。
+    ///     若提供此参数，其长度必须与 <paramref name="args" /> 相同。
+    /// </param>
     /// <exception cref="ArgumentNullException">当 <paramref name="name" /> 为 <see langword="null" /> 时抛出</exception>
+    /// <exception cref="ArgumentException">
+    ///     当 <paramref name="attributes" /> 不为 <see langword="null" /> 且长度与 <paramref name="args" /> 不匹配时抛出
+    /// </exception>
     /// <exception cref="InvalidOperationException">
     ///     当 <paramref name="args" /> 中有任何类型未注册对应的 <see cref="AutoSyncType" /> 时抛出
     /// </exception>
-    public FlexibleModule(string name, Action receiveAction, Type[] args) {
+    public FlexibleModule(string name, Action receiveAction, Type[] args, Attribute[] attributes = null) {
         _name = name ?? throw new ArgumentNullException(nameof(name));
         _receiveAction = receiveAction;
         _fieldTypes = args ?? Array.Empty<Type>();
         _values = new object[_fieldTypes.Length];
+
+        if (attributes != null && attributes.Length != _fieldTypes.Length)
+            throw new ArgumentException(
+                $"attributes 长度（{attributes.Length}）与 args 长度（{_fieldTypes.Length}）不匹配");
 
         foreach (var type in _fieldTypes) {
             if (!AutoSyncHandler.RegisteredAutoSyncTypes.ContainsKey(type))
                 throw new InvalidOperationException(
                     $"类型 {type.FullName} 未注册对应的 AutoSyncType，无法用于 FlexibleModule。" +
                     "请确保在调用 Register 前已通过 NetModuleLoader.LoadAutoSyncsFrom 加载了对应的 AutoSyncType。");
+        }
+
+        _memberInfos = new MemberInfo[_fieldTypes.Length];
+        if (attributes != null) {
+            for (var i = 0; i < _fieldTypes.Length; i++) {
+                if (attributes[i] != null)
+                    _memberInfos[i] = new AttributeMemberInfo(attributes[i]);
+            }
         }
     }
 
@@ -116,17 +139,43 @@ public sealed class FlexibleModule : NetModule
     /// <inheritdoc />
     public override void Send(ModPacket p) {
         for (var i = 0; i < _fieldTypes.Length; i++)
-            AutoSyncHandler.SendValue(p, _values[i], _fieldTypes[i]);
+            AutoSyncHandler.SendValue(p, _values[i], _fieldTypes[i], _memberInfos[i]);
     }
 
     /// <inheritdoc />
     public override void Read(BinaryReader r) {
         for (var i = 0; i < _fieldTypes.Length; i++)
-            _values[i] = AutoSyncHandler.ReadValue(r, _fieldTypes[i]);
+            _values[i] = AutoSyncHandler.ReadValue(r, _fieldTypes[i], _memberInfos[i]);
     }
 
     /// <inheritdoc />
     public override void Receive() {
         _receiveAction?.Invoke();
+    }
+
+    // 合成的 MemberInfo，仅携带单个 Attribute，供 AutoSyncType 读取字段级属性。
+    private sealed class AttributeMemberInfo : MemberInfo
+    {
+        private readonly Attribute _attribute;
+
+        public AttributeMemberInfo(Attribute attribute) {
+            _attribute = attribute;
+        }
+
+        public override MemberTypes MemberType => MemberTypes.Custom;
+        public override string Name => string.Empty;
+        public override Type DeclaringType => null;
+        public override Type ReflectedType => null;
+
+        public override object[] GetCustomAttributes(bool inherit) =>
+            new object[] { _attribute };
+
+        public override object[] GetCustomAttributes(Type attributeType, bool inherit) =>
+            attributeType.IsInstanceOfType(_attribute)
+                ? new object[] { _attribute }
+                : Array.Empty<object>();
+
+        public override bool IsDefined(Type attributeType, bool inherit) =>
+            attributeType.IsInstanceOfType(_attribute);
     }
 }
