@@ -225,9 +225,9 @@ public class NetModuleLoader : ModSystem
     /// <summary>
     ///     通过名称查找已注册的 <see cref="FlexibleModule" /> 实例
     /// </summary>
-    /// <param name="name">注册时传入的名称</param>
+    /// <param name="name">注册时传入的名称（不含 "FlexibleModule." 前缀）</param>
     /// <returns>对应的 <see cref="FlexibleModule" />；若不存在则返回 <see langword="null" /></returns>
     public static FlexibleModule FindFlexibleModule(string name) {
-        return _modules.OfType<FlexibleModule>().FirstOrDefault(m => m.Name == name);
+        return _modules.OfType<FlexibleModule>().FirstOrDefault(m => m.Name == $"FlexibleModule.{name}");
     }
 }

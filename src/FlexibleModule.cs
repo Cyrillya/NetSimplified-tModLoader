@@ -37,7 +37,7 @@ public sealed class FlexibleModule : NetModule
     private object[] _values;
 
     /// <inheritdoc />
-    public override string Name => _name;
+    public override string Name => $"FlexibleModule.{_name}";
 
     /// <summary>
     ///     创建一个 <see cref="FlexibleModule" /> 实例。
