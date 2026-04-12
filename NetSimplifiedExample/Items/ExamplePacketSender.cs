@@ -28,10 +28,8 @@ public class ExamplePacketSender : ModItem
         if (Main.netMode is NetmodeID.Server) {
             InventoryPacket.Get(player.whoAmI).Send(toClient: player.whoAmI);
 
-            if (CrossMod.TryGetExternalFlexibleModule("NetSimpExSubmod", "SaySmth", out var saySmthModule)) {
-                saySmthModule.Set(["检测到加载了 NetSimpExSubmod"]);
-                saySmthModule.SendAsExternalModule(toClient: player.whoAmI);
-            }
+            CrossMod.TrySendExternalFlexibleModule("NetSimpExSubmod", "SaySmth",
+                ["检测到加载了 NetSimpExSubmod"], toClient: player.whoAmI);
         }
 
         return base.CanUseItem(player);

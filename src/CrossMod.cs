@@ -51,6 +51,34 @@ public static class CrossMod
             return true;
         }
 
+        if (operation == "NetSimplified_SetAndSendFlexibleModule") {
+            // 在本模组的程序集上下文中完成 Set 和 Send，避免跨程序集类型转换问题
+            if (args.Length < 3) return null;
+            if (args[1] is not string name) return null;
+            if (args[2] is not object[] values) return null;
+
+            var module = NetModuleLoader.FindFlexibleModule(name);
+            if (module == null) return null;
+
+            try {
+                module.Set(values);
+            }
+            catch {
+                return null;
+            }
+
+            var toClient = -1;
+            var ignoreClient = -1;
+            var runLocally = false;
+
+            if (args.Length > 3 && args[3] is int tc) toClient = tc;
+            if (args.Length > 4 && args[4] is int ic) ignoreClient = ic;
+            if (args.Length > 5 && args[5] != null) runLocally = Convert.ToBoolean(args[5]);
+
+            module.Send(toClient, ignoreClient, runLocally);
+            return true;
+        }
+
         return false;
     }
 
@@ -183,55 +211,43 @@ public static class CrossMod
     }
 
     /// <summary>
-    ///     尝试从指定模组中按名称获取一个外部 <see cref="FlexibleModule" /> 实例。
-    /// </summary>
-    /// <param name="mod">目标模组名称。</param>
-    /// <param name="name"><see cref="FlexibleModule" /> 的名称（不含 "FlexibleModule." 前缀）。</param>
-    /// <param name="module">若成功则输出 <see cref="FlexibleModule" /> 实例，否则为 null。</param>
-    /// <returns>如果成功获取则为 true，否则为 false。</returns>
-    public static bool TryGetExternalFlexibleModule(string mod, string name, out FlexibleModule module) {
-        module = null;
-        if (!TryGetExternalModule(mod, $"FlexibleModule.{name}", out var obj)) return false;
-        if (obj is not FlexibleModule flexModule) return false;
-        module = flexModule;
-        return true;
-    }
-
-    /// <summary>
-    ///     尝试从指定的 Mod 实例中按名称获取一个外部 <see cref="FlexibleModule" /> 实例。
+    ///     尝试在目标模组中设置并发送一个指定名称的 <see cref="FlexibleModule" />。
+    ///     <para>
+    ///         此方法通过 <see cref="Mod.Call" /> 在目标模组的程序集上下文内完成 Set 与 Send，
+    ///         因此不受 tModLoader 各模组分别加载同名 DLL 导致的跨程序集类型不兼容问题影响。
+    ///     </para>
     /// </summary>
     /// <param name="modInstance">目标模组的 Mod 实例。</param>
     /// <param name="name"><see cref="FlexibleModule" /> 的名称（不含 "FlexibleModule." 前缀）。</param>
-    /// <param name="module">若成功则输出 <see cref="FlexibleModule" /> 实例，否则为 null。</param>
-    /// <returns>如果成功获取则为 true，否则为 false。</returns>
-    public static bool TryGetExternalFlexibleModule(Mod modInstance, string name, out FlexibleModule module) {
-        module = null;
-        if (!TryGetExternalModule(modInstance, $"FlexibleModule.{name}", out var obj)) return false;
-        if (obj is not FlexibleModule flexModule) return false;
-        module = flexModule;
-        return true;
+    /// <param name="values">传给 <c>Set</c> 的值数组，须与目标模块声明的字段类型一一对应。</param>
+    /// <param name="toClient">目标客户端 ID，默认为 -1 表示广播。</param>
+    /// <param name="ignoreClient">要忽略的客户端 ID，默认为 -1 表示不忽略。</param>
+    /// <param name="runLocally">是否在目标模组本地也执行该模块的接收逻辑。</param>
+    /// <returns>如果设置并发送成功则为 true，否则为 false。</returns>
+    public static bool TrySendExternalFlexibleModule(Mod modInstance, string name, object[] values, int toClient = -1, int ignoreClient = -1, bool runLocally = false) {
+        object[] args = ["NetSimplified_SetAndSendFlexibleModule", name, values, toClient, ignoreClient, runLocally];
+        var reply = modInstance.Call(args);
+        if (reply is not bool success) return false;
+        return success;
     }
 
     /// <summary>
-    ///     从指定模组中按名称获取一个外部 <see cref="FlexibleModule" /> 实例（若失败返回 null）。
+    ///     尝试在目标模组中设置并发送一个指定名称的 <see cref="FlexibleModule" />。
+    ///     <para>
+    ///         此方法通过 <see cref="Mod.Call" /> 在目标模组的程序集上下文内完成 Set 与 Send，
+    ///         因此不受 tModLoader 各模组分别加载同名 DLL 导致的跨程序集类型不兼容问题影响。
+    ///     </para>
     /// </summary>
-    /// <param name="mod">目标模组名称。</param>
+    /// <param name="mod">目标模组的名称。</param>
     /// <param name="name"><see cref="FlexibleModule" /> 的名称（不含 "FlexibleModule." 前缀）。</param>
-    /// <returns>找到的 <see cref="FlexibleModule" /> 实例，或 null。</returns>
-    public static FlexibleModule GetExternalFlexibleModule(string mod, string name) {
-        TryGetExternalFlexibleModule(mod, name, out var module);
-        return module;
-    }
-
-    /// <summary>
-    ///     从指定 Mod 实例中按名称获取一个外部 <see cref="FlexibleModule" /> 实例（若失败返回 null）。
-    /// </summary>
-    /// <param name="modInstance">目标模组的 Mod 实例。</param>
-    /// <param name="name"><see cref="FlexibleModule" /> 的名称（不含 "FlexibleModule." 前缀）。</param>
-    /// <returns>找到的 <see cref="FlexibleModule" /> 实例，或 null。</returns>
-    public static FlexibleModule GetExternalFlexibleModule(Mod modInstance, string name) {
-        TryGetExternalFlexibleModule(modInstance, name, out var module);
-        return module;
+    /// <param name="values">传给 <c>Set</c> 的值数组，须与目标模块声明的字段类型一一对应。</param>
+    /// <param name="toClient">目标客户端 ID，默认为 -1 表示广播。</param>
+    /// <param name="ignoreClient">要忽略的客户端 ID，默认为 -1 表示不忽略。</param>
+    /// <param name="runLocally">是否在目标模组本地也执行该模块的接收逻辑。</param>
+    /// <returns>如果设置并发送成功则为 true，否则为 false。</returns>
+    public static bool TrySendExternalFlexibleModule(string mod, string name, object[] values, int toClient = -1, int ignoreClient = -1, bool runLocally = false) {
+        if (!ModLoader.TryGetMod(mod, out var modInstance)) return false;
+        return TrySendExternalFlexibleModule(modInstance, name, values, toClient, ignoreClient, runLocally);
     }
 
     /// <summary>
