@@ -53,7 +53,7 @@ public abstract class NetModule
 
                 var len = (ushort) mp.GetType().GetField("len", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(mp)!;
                 if (Main.netMode is NetmodeID.MultiplayerClient && Type >= 0)
-                    NetModuleLoader.NetModuleDiagnosticsUI.CountSentMessage(Type, len - 4); // 4 bytes for the id
+                    NetModuleLoader.NetModuleDiagnosticsUI?.CountSentMessage(Type, len - 4); // 4 bytes for the id
             }
 
             if (runLocally) Receive();
@@ -90,6 +90,6 @@ public abstract class NetModule
 
         var length = (int) reader.BaseStream.Position - start;
         if (Main.netMode is NetmodeID.MultiplayerClient && id >= 0)
-            NetModuleLoader.NetModuleDiagnosticsUI.CountReadMessage(id, length - 4); // 4 bytes for the id
+            NetModuleLoader.NetModuleDiagnosticsUI?.CountReadMessage(id, length - 4); // 4 bytes for the id
     }
 }

@@ -316,7 +316,7 @@ self => {
 来自配套的附属示例Mod，[文件在这](NetSimpExSubmod/Content/Items/ExamplePacketSender.cs)
 
 ```csharp
-// 在任意模组加载时运行一次的重写函数中注册，此处以 SetStaticDefaults 为例
+// 在任意模组加载时运行一次的重写函数中注册
 _saySmthModule = NetModuleLoader.Register(new FlexibleModule("SaySmth",
     self => Main.NewText(self.GetValue<string>(0), Main.DiscoColor),
     [typeof(string)]));
@@ -326,7 +326,7 @@ _saySmthModule.Set(["Hello, World!"]);
 _saySmthModule.Send(toClient: player.whoAmI);
 ```
 
-
+## 发包
 
 发包调用 `NetModule.Send` 即可，获取包实例看上面的
 
