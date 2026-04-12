@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Reflection;
 using NetSimplified.Syncing;
-using Terraria.ModLoader;
 
 namespace NetSimplified;
 
@@ -137,9 +136,9 @@ public sealed class FlexibleModule : NetModule
     public T GetValue<T>(int index) => (T) GetValue(index);
 
     /// <inheritdoc />
-    public override void Send(ModPacket p) {
+    public override void Send(BinaryWriter writer) {
         for (var i = 0; i < _fieldTypes.Length; i++)
-            AutoSyncHandler.SendValue(p, _values[i], _fieldTypes[i], _memberInfos[i]);
+            AutoSyncHandler.SendValue(writer, _values[i], _fieldTypes[i], _memberInfos[i]);
     }
 
     /// <inheritdoc />

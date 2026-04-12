@@ -21,8 +21,8 @@ public class RandomStringPacket : NetModule
         return module;
     }
 
-    public override void Send(ModPacket p) {
-        p.Write(_rdChar);
+    public override void Send(BinaryWriter writer) {
+        writer.Write(_rdChar);
     }
 
     public override void Read(BinaryReader r) {
