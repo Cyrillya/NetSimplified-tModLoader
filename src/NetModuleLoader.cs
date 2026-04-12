@@ -153,6 +153,8 @@ public class NetModuleLoader : ModSystem
 
         if (_modules.Any(m => m.Name == netModule.Name)) throw new Exception("不能重复注册! " + netModule.Name);
 
+        if (_modules.Count > ushort.MaxValue)
+            throw new InvalidOperationException($"NetModule 数量超出 ushort 最大值 ({ushort.MaxValue})，无法注册更多模块");
         netModule.Type = (ushort) _modules.Count;
         netModule.Mod = CurrentMod;
         _modules.Add(netModule);

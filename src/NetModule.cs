@@ -79,8 +79,11 @@ public abstract class NetModule
                 mp.Send(toClient, ignoreClient);
 
                 var len = (ushort) mp.GetType().GetField("len", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(mp)!;
-                if (Main.netMode is NetmodeID.MultiplayerClient)
-                    NetModuleLoader.NetModuleDiagnosticsUI?.CountSentMessage(Type, len - 3); // 2 bytes for ushort id + 1 byte for compress flag
+                if (Main.netMode is NetmodeID.MultiplayerClient) {
+                    // header: 2 bytes (ushort type) + 1 byte (compress flag) [+ 4 bytes (int32 compressed length) if compressed]
+                    var headerSize = compress ? 7 : 3;
+                    NetModuleLoader.NetModuleDiagnosticsUI?.CountSentMessage(Type, len - headerSize);
+                }
             }
 
             if (runLocally) Receive();
@@ -136,7 +139,10 @@ public abstract class NetModule
         module.Receive();
 
         var length = (int) reader.BaseStream.Position - start;
-        if (Main.netMode is NetmodeID.MultiplayerClient)
-            NetModuleLoader.NetModuleDiagnosticsUI?.CountReadMessage(id, length - 3); // 2 bytes for ushort id + 1 byte for compress flag
+        if (Main.netMode is NetmodeID.MultiplayerClient) {
+            // header: 2 bytes (ushort type) + 1 byte (compress flag) [+ 4 bytes (int32 compressed length) if compressed]
+            var headerSize = compressed ? 7 : 3;
+            NetModuleLoader.NetModuleDiagnosticsUI?.CountReadMessage(id, length - headerSize);
+        }
     }
 }
