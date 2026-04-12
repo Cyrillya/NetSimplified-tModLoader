@@ -13,7 +13,7 @@ namespace NetSimplified;
 /// </summary>
 /// <example>
 ///     <code>
-///         // 在 Mod.Load 中注册：
+///         // 在 SetStaticDefaults 中注册：
 ///         _myModule = NetModuleLoader.Register(new FlexibleModule("MyPacket", OnReceive, new[] { typeof(int), typeof(string) }));
 ///         
 ///         // 发包：
@@ -21,16 +21,16 @@ namespace NetSimplified;
 ///         _myModule.Send();
 ///         
 ///         // 收包回调：
-///         void OnReceive() {
-///             var number = _myModule.GetValue&lt;int&gt;(0);
-///             var text   = _myModule.GetValue&lt;string&gt;(1);
+///         void OnReceive(FlexibleModule self) {
+///             var number = self.GetValue&lt;int&gt;(0);
+///             var text   = self.GetValue&lt;string&gt;(1);
 ///         }
 ///     </code>
 /// </example>
 public sealed class FlexibleModule : NetModule
 {
     private readonly string _name;
-    private readonly Action _receiveAction;
+    private readonly Action<FlexibleModule> _receiveAction;
     private readonly Type[] _fieldTypes;
     private readonly MemberInfo[] _memberInfos;
 
@@ -43,7 +43,7 @@ public sealed class FlexibleModule : NetModule
     ///     创建一个 <see cref="FlexibleModule" /> 实例。
     /// </summary>
     /// <param name="name">该模块的唯一名称，用于区分不同的 <see cref="FlexibleModule" /></param>
-    /// <param name="receiveAction">收包时执行的操作</param>
+    /// <param name="receiveAction">收包时执行的操作，参数为该 <see cref="FlexibleModule" /> 实例自身</param>
     /// <param name="args">
     ///     该包所包含的字段类型数组，所有类型必须已通过
     ///     <see cref="NetModuleLoader.LoadAutoSyncsFrom" /> 注册了对应的 <see cref="AutoSyncType" />
@@ -61,7 +61,7 @@ public sealed class FlexibleModule : NetModule
     /// <exception cref="InvalidOperationException">
     ///     当 <paramref name="args" /> 中有任何类型未注册对应的 <see cref="AutoSyncType" /> 时抛出
     /// </exception>
-    public FlexibleModule(string name, Action receiveAction, Type[] args, Attribute[] attributes = null) {
+    public FlexibleModule(string name, Action<FlexibleModule> receiveAction, Type[] args, Attribute[] attributes = null) {
         _name = name ?? throw new ArgumentNullException(nameof(name));
         _receiveAction = receiveAction;
         _fieldTypes = args ?? Array.Empty<Type>();
@@ -150,7 +150,7 @@ public sealed class FlexibleModule : NetModule
 
     /// <inheritdoc />
     public override void Receive() {
-        _receiveAction?.Invoke();
+        _receiveAction?.Invoke(this);
     }
 
     // 合成的 MemberInfo，仅携带单个 Attribute，供 AutoSyncType 读取字段级属性。
