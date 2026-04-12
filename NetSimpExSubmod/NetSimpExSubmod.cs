@@ -23,7 +23,6 @@ public class NetSimpExSubmod : Mod
         // 这里演示如何自行加载并注册 NetModule 实例，通常不需要这么做
         NetModuleLoader.Register(new ReplyListPacket());
         NetModuleLoader.Register(new ReplySumPacket());
-        NetModuleLoader.Register(new SaySmthPacket());
     }
 
     public override object Call(params object[] args) {

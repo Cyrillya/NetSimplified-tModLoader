@@ -79,7 +79,7 @@ public class YourMod : Mod {
 - `build.txt` 中添加了：`dllReferences = NetSimplified`
 - `Mod` [主类](NetSimplifiedExample/NetSimplifiedExample.cs)中激活库功能相关代码
 - 四个 `NetModule` 类的[例子](NetSimplifiedExample/Packets)
-- 一个发单独包的[例子](NetSimplifiedExample/Items/ExamplePacketSender.cs)
+- 一个发单独包的[例子](NetSimplifiedExample/Items/ExamplePacketSender.cs)，其中也包含了调用并发送附属模组的 `FlexibleModule` 的[例子](NetSimplifiedExample/Items/ExamplePacketSender.cs#L31)
 - 一个发 AggregateModule 合并包的[例子](NetSimplifiedExample/Items/ExampleAggregateSender.cs)
 - 一个请求传送功能的完整实现[例子](NetSimplifiedExample/Commands/TpCommand.cs)，用于演示自定义传输字段以及[如何为其绑定自动传输](NetSimplifiedExample/Packets/TpPackets.cs#L45)
 - 一个[树状数组及其自动传输的实现](NetSimplifiedExample/CustomTypes)，在主模组中没有作用，用于在附属模组中演示跨模组调用
@@ -90,7 +90,8 @@ public class YourMod : Mod {
 - `Mod` [主类](NetSimpExSubmod/NetSimpExSubmod.cs)中演示了如何自动读取并注册其他模组（程序集）的 `AutoSyncType`，以及通过 `NetModuleLoader.Register` 手动注册 `NetModule` 的方法
 - 三个 `NetModule` 类的[例子](NetSimpExSubmod/Packets)，涉及对主模组中的 [FenwickTreeInt](NetSimplifiedExample/CustomTypes/FenwickTreeInt.cs) 类的传输
 - 通过指令对存储在服务器的 `List<FenwickTreeInt>` 变量进行查询和修改的[例子](NetSimpExSubmod/Content/Commands/FenwickTreeOptCommand.cs)
-- 获取并传输来自其他模组的 `NetModule` 的[例子](NetSimpExSubmod/Content/Items/ExamplePacketSender.cs#L33)
+- 获取并传输来自其他模组的 `NetModule` 的[例子](NetSimpExSubmod/Content/Items/ExamplePacketSender.cs#L41)
+- 一个 `FlexibleModule` 注册与使用的[例子](NetSimpExSubmod/Content/Items/ExamplePacketSender.cs#L14)
 
 ***
 
@@ -153,11 +154,31 @@ public class ExamplePacket : NetModule {
 
 要使用跨模组调用功能，请确保被调用的模组在 `Mod.Call` 中调用了 [CrossMod 接口](src/CrossMod.cs#L17)，具体实现可以参考[示例](NetSimplifiedExample/NetSimplifiedExample.cs#L30)
 
-跨模组调用功能允许你获取并发送其他模组的 `NetModule`，可参考该[例子](NetSimpExSubmod/Content/Items/ExamplePacketSender.cs#L33)以及 [CrossMod.cs](src/CrossMod.cs)
+跨模组调用功能允许你获取并发送其他模组的 `NetModule`，可参考该[例子](NetSimpExSubmod/Content/Items/ExamplePacketSender.cs#L41)以及 [CrossMod.cs](src/CrossMod.cs)
 
-该功能依赖于 `Mod.Call` 实现，会识别 `args[0]` 为 `NetSimplified_GetModule` 与 `NetSimplified_SendModule` 的调用，详见 [CrossMod.cs](src/CrossMod.cs)。这意味着不使用该库的模组也可以通过 `Mod.Call` 来调用实现了接口的模组的 `NetModule`
+该功能依赖于 `Mod.Call` 实现，会识别 `args[0]` 为以下操作名称的调用，详见 [CrossMod.cs](src/CrossMod.cs)：
+
+| 操作名称 | 说明 |
+|---|---|
+| `NetSimplified_GetModule` | 按名称获取该模组中的 `NetModule` 实例（返回 `object`） |
+| `NetSimplified_SendModule` | 对传入的 `NetModule` 实例调用 `Send`（需先通过 `GetModule` 获取） |
+| `NetSimplified_SetAndSendFlexibleModule` | 在目标模组的程序集上下文中完成 `FlexibleModule` 的 `Set` 与 `Send`（用于跨模组调用 `FlexibleModule`） |
+
+这意味着不使用该库的模组也可以通过 `Mod.Call` 来调用实现了接口的模组的 `NetModule`
 
 该功能实际上是“委托”被调用模组发包，发送和接收全程均由被调用模组处理
+
+### 跨模组调用 FlexibleModule
+
+由于 tModLoader 会为每个模组各自加载一份独立的 `NetSimplified.dll` 副本，不同模组中的 `FlexibleModule` 类型在运行时并非同一个类型，无法直接跨程序集强制转换。因此，**不能**尝试获取其他模组的 `FlexibleModule` 实例后直接使用，而应使用 `CrossMod.TrySendExternalFlexibleModule`，让目标模组在自己的上下文中完成 Set 与 Send：
+
+```csharp
+// ✅ 正确做法：通过 TrySendExternalFlexibleModule 委托目标模组执行
+CrossMod.TrySendExternalFlexibleModule("TargetMod", "MyFlexPacket",
+    [value1, value2], toClient: player.whoAmI);
+```
+
+若目标模组未加载，该方法静默返回 `false`，不会产生副作用。可参考[主示例模组的例子](NetSimplifiedExample/Items/ExamplePacketSender.cs)
 
 ***
 
@@ -250,6 +271,80 @@ AggregateModule.Get(new List<NetModule> {
 ```
 
 ***
+
+## [FlexibleModule 类](src/FlexibleModule.cs)
+
+`FlexibleModule` 是一种特殊的 `NetModule`，允许在**不继承 `NetModule` 的情况下**，通过构造函数直接声明包内容与收包行为，适合用在不值得为其单独新建文件的简单包场景。
+
+### 注册
+
+`FlexibleModule` 无法通过 `LoadNetModules()` 自动注册，需要使用 `NetModuleLoader.Register` 手动注册，并将返回的实例保存为静态字段以供后续使用。
+
+注册代码只需在**服务器和客户端各执行一次**即可，放在任何模组加载时运行一次的重写函数中均可（如 `ModItem.SetStaticDefaults`、`Mod.Load` 等）：
+
+```csharp
+public class MyItem : ModItem {
+    private static FlexibleModule _myModule;
+
+    public override void SetStaticDefaults() {
+        _myModule = NetModuleLoader.Register(new FlexibleModule(
+            "MyPacket",                                      // 唯一名称
+            self => {                                        // 收包回调，self 为模块自身实例
+                var number = self.GetValue<int>(0);
+                var text   = self.GetValue<string>(1);
+                Main.NewText($"{number}: {text}");
+            },
+            [typeof(int), typeof(string)]                   // 字段类型列表
+        ));
+    }
+}
+```
+
+**注意：** 在调用 `Register` 前，需要确保所有字段类型对应的 `AutoSyncType` 已通过 `NetModuleLoader.LoadAutoSyncsFrom` 注册，否则会抛出 `InvalidOperationException`。
+
+### 构造函数参数
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `name` | `string` | 模块唯一名称，不能与其他已注册的 `FlexibleModule` 重复 |
+| `receiveAction` | `Action<FlexibleModule>` | 收包时执行的回调，参数 `self` 为模块自身实例，可通过它调用 `GetValue` 读取字段值 |
+| `args` | `Type[]` | 包含的字段类型数组，所有类型须已注册对应的 `AutoSyncType` |
+| `attributes` | `Attribute[]`（可选） | 与 `args` 一一对应的特性数组，用于控制字段传输行为（如 `ItemSyncAttribute`、`ColorSyncAttribute`），可为 `null` |
+
+### Set(object[] args)
+
+发包前需调用 `Set` 为包中的字段赋值，赋值顺序须与构造时声明的 `args` 类型顺序一致：
+
+```csharp
+_myModule.Set([42, "hello"]);
+_myModule.Send(toClient: player.whoAmI);
+```
+
+### GetValue\<T\>(int index)
+
+在收包回调中通过索引读取字段值，索引从 0 开始，与 `args` 类型顺序对应：
+
+```csharp
+self => {
+    int number   = self.GetValue<int>(0);
+    string text  = self.GetValue<string>(1);
+}
+```
+
+### 例子
+
+来自配套的附属示例Mod，[文件在这](NetSimpExSubmod/Content/Items/ExamplePacketSender.cs)
+
+```csharp
+// 在任意模组加载时运行一次的重写函数中注册
+_saySmthModule = NetModuleLoader.Register(new FlexibleModule("SaySmth",
+    self => Main.NewText(self.GetValue<string>(0), Main.DiscoColor),
+    [typeof(string)]));
+
+// 发包
+_saySmthModule.Set(["Hello, World!"]);
+_saySmthModule.Send(toClient: player.whoAmI);
+```
 
 ## 发包
 

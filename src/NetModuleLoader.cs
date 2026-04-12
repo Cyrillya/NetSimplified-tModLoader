@@ -147,11 +147,11 @@ public class NetModuleLoader : ModSystem
         }
     }
 
-    public static void Register(NetModule netModule) {
+    public static T Register<T>(T netModule) where T : NetModule {
         _modules ??= new List<NetModule>();
         FieldInfos ??= new Dictionary<string, FieldInfo[]>();
 
-        if (_modules.Contains(netModule)) throw new Exception("不能重复注册! " + netModule.Name);
+        if (_modules.Any(m => m.Name == netModule.Name)) throw new Exception("不能重复注册! " + netModule.Name);
 
         netModule.Type = _modules.Count;
         netModule.Mod = CurrentMod;
@@ -194,6 +194,8 @@ public class NetModuleLoader : ModSystem
             IsTypeSupported(fieldInfo.FieldType));
         var fieldInfos = fields as FieldInfo[] ?? fields.ToArray();
         if (fieldInfos.Any()) FieldInfos[netModule.Name] = fieldInfos.ToArray();
+
+        return netModule;
     }
 
     /// <summary>
@@ -218,5 +220,14 @@ public class NetModuleLoader : ModSystem
     /// <returns><see cref="NetModule" /> 实例</returns>
     public static T Get<T>() where T : NetModule {
         return (T) _modules.FirstOrDefault(m => m is T || m.GetType() == typeof(T));
+    }
+
+    /// <summary>
+    ///     通过名称查找已注册的 <see cref="FlexibleModule" /> 实例
+    /// </summary>
+    /// <param name="name">注册时传入的名称（不含 "FlexibleModule." 前缀）</param>
+    /// <returns>对应的 <see cref="FlexibleModule" />；若不存在则返回 <see langword="null" /></returns>
+    public static FlexibleModule FindFlexibleModule(string name) {
+        return _modules.OfType<FlexibleModule>().FirstOrDefault(m => m.Name == $"FlexibleModule.{name}");
     }
 }
