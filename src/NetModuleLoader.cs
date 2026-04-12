@@ -151,7 +151,7 @@ public class NetModuleLoader : ModSystem
         _modules ??= new List<NetModule>();
         FieldInfos ??= new Dictionary<string, FieldInfo[]>();
 
-        if (_modules.Contains(netModule)) throw new Exception("不能重复注册! " + netModule.Name);
+        if (_modules.Any(m => m.Name == netModule.Name)) throw new Exception("不能重复注册! " + netModule.Name);
 
         netModule.Type = _modules.Count;
         netModule.Mod = CurrentMod;
@@ -220,5 +220,14 @@ public class NetModuleLoader : ModSystem
     /// <returns><see cref="NetModule" /> 实例</returns>
     public static T Get<T>() where T : NetModule {
         return (T) _modules.FirstOrDefault(m => m is T || m.GetType() == typeof(T));
+    }
+
+    /// <summary>
+    ///     通过名称查找已注册的 <see cref="FlexibleModule" /> 实例
+    /// </summary>
+    /// <param name="name">注册时传入的名称</param>
+    /// <returns>对应的 <see cref="FlexibleModule" />；若不存在则返回 <see langword="null" /></returns>
+    public static FlexibleModule FindFlexibleModule(string name) {
+        return _modules.OfType<FlexibleModule>().FirstOrDefault(m => m.Name == name);
     }
 }
