@@ -183,6 +183,58 @@ public static class CrossMod
     }
 
     /// <summary>
+    ///     尝试从指定模组中按名称获取一个外部 <see cref="FlexibleModule" /> 实例。
+    /// </summary>
+    /// <param name="mod">目标模组名称。</param>
+    /// <param name="name"><see cref="FlexibleModule" /> 的名称（不含 "FlexibleModule." 前缀）。</param>
+    /// <param name="module">若成功则输出 <see cref="FlexibleModule" /> 实例，否则为 null。</param>
+    /// <returns>如果成功获取则为 true，否则为 false。</returns>
+    public static bool TryGetExternalFlexibleModule(string mod, string name, out FlexibleModule module) {
+        module = null;
+        if (!TryGetExternalModule(mod, $"FlexibleModule.{name}", out var obj)) return false;
+        if (obj is not FlexibleModule flexModule) return false;
+        module = flexModule;
+        return true;
+    }
+
+    /// <summary>
+    ///     尝试从指定的 Mod 实例中按名称获取一个外部 <see cref="FlexibleModule" /> 实例。
+    /// </summary>
+    /// <param name="modInstance">目标模组的 Mod 实例。</param>
+    /// <param name="name"><see cref="FlexibleModule" /> 的名称（不含 "FlexibleModule." 前缀）。</param>
+    /// <param name="module">若成功则输出 <see cref="FlexibleModule" /> 实例，否则为 null。</param>
+    /// <returns>如果成功获取则为 true，否则为 false。</returns>
+    public static bool TryGetExternalFlexibleModule(Mod modInstance, string name, out FlexibleModule module) {
+        module = null;
+        if (!TryGetExternalModule(modInstance, $"FlexibleModule.{name}", out var obj)) return false;
+        if (obj is not FlexibleModule flexModule) return false;
+        module = flexModule;
+        return true;
+    }
+
+    /// <summary>
+    ///     从指定模组中按名称获取一个外部 <see cref="FlexibleModule" /> 实例（若失败返回 null）。
+    /// </summary>
+    /// <param name="mod">目标模组名称。</param>
+    /// <param name="name"><see cref="FlexibleModule" /> 的名称（不含 "FlexibleModule." 前缀）。</param>
+    /// <returns>找到的 <see cref="FlexibleModule" /> 实例，或 null。</returns>
+    public static FlexibleModule GetExternalFlexibleModule(string mod, string name) {
+        TryGetExternalFlexibleModule(mod, name, out var module);
+        return module;
+    }
+
+    /// <summary>
+    ///     从指定 Mod 实例中按名称获取一个外部 <see cref="FlexibleModule" /> 实例（若失败返回 null）。
+    /// </summary>
+    /// <param name="modInstance">目标模组的 Mod 实例。</param>
+    /// <param name="name"><see cref="FlexibleModule" /> 的名称（不含 "FlexibleModule." 前缀）。</param>
+    /// <returns>找到的 <see cref="FlexibleModule" /> 实例，或 null。</returns>
+    public static FlexibleModule GetExternalFlexibleModule(Mod modInstance, string name) {
+        TryGetExternalFlexibleModule(modInstance, name, out var module);
+        return module;
+    }
+
+    /// <summary>
     ///     将当前模块作为外部模块发送到其它模组/客户端的快捷扩展方法。
     /// </summary>
     /// <param name="module">要发送的模块实例（作为扩展方法的 this 参数）。</param>

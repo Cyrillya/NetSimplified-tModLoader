@@ -27,6 +27,11 @@ public class ExamplePacketSender : ModItem
     public override bool CanUseItem(Player player) {
         if (Main.netMode is NetmodeID.Server) {
             InventoryPacket.Get(player.whoAmI).Send(toClient: player.whoAmI);
+
+            if (CrossMod.TryGetExternalFlexibleModule("NetSimpExSubmod", "SaySmth", out var saySmthModule)) {
+                saySmthModule.Set(["检测到加载了 NetSimpExSubmod"]);
+                saySmthModule.SendAsExternalModule(toClient: player.whoAmI);
+            }
         }
 
         return base.CanUseItem(player);
