@@ -258,7 +258,9 @@ AggregateModule.Get(new List<NetModule> {
 
 ### 注册
 
-`FlexibleModule` 无法通过 `LoadNetModules()` 自动注册，需要在 `ModItem`（或其他 `ModType`）的 `SetStaticDefaults()` 中使用 `NetModuleLoader.Register` 手动注册，并将返回的实例保存为静态字段以供后续使用：
+`FlexibleModule` 无法通过 `LoadNetModules()` 自动注册，需要使用 `NetModuleLoader.Register` 手动注册，并将返回的实例保存为静态字段以供后续使用。
+
+注册代码只需在**服务器和客户端各执行一次**即可，放在任何模组加载时运行一次的重写函数中均可（如 `ModItem.SetStaticDefaults`、`Mod.Load` 等）：
 
 ```csharp
 public class MyItem : ModItem {
@@ -314,7 +316,7 @@ self => {
 来自配套的附属示例Mod，[文件在这](NetSimpExSubmod/Content/Items/ExamplePacketSender.cs)
 
 ```csharp
-// 在 SetStaticDefaults 中注册
+// 在任意模组加载时运行一次的重写函数中注册，此处以 SetStaticDefaults 为例
 _saySmthModule = NetModuleLoader.Register(new FlexibleModule("SaySmth",
     self => Main.NewText(self.GetValue<string>(0), Main.DiscoColor),
     [typeof(string)]));
