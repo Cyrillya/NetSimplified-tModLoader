@@ -153,7 +153,7 @@ public class NetModuleLoader : ModSystem
 
         if (_modules.Any(m => m.Name == netModule.Name)) throw new Exception("不能重复注册! " + netModule.Name);
 
-        netModule.Type = _modules.Count;
+        netModule.Type = (ushort) _modules.Count;
         netModule.Mod = CurrentMod;
         _modules.Add(netModule);
 

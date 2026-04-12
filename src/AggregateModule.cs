@@ -29,7 +29,7 @@ public sealed class AggregateModule : NetModule
         var count = r.ReadInt32();
         Modules = new List<NetModule>();
         for (var i = 0; i < count; i++) {
-            var type = r.ReadInt32();
+            var type = r.ReadUInt16();
             var module = NetModuleLoader.Get(type);
             AutoSyncHandler.HandleAutoRead(module, r);
             module.Read(r);

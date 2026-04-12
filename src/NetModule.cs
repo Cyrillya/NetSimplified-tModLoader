@@ -19,7 +19,7 @@ public abstract class NetModule
     protected int Sender { get; private set; } = Main.myPlayer;
 
     /// <summary>该 <see cref="NetModule" /> 被分配到的ID</summary>
-    public int Type { get; internal set; }
+    public ushort Type { get; internal set; }
 
     /// <summary>关联的 Mod 实例（由 NetModuleLoader 在注册时设置）</summary>
     public Mod Mod { get; internal set; }
@@ -79,8 +79,8 @@ public abstract class NetModule
                 mp.Send(toClient, ignoreClient);
 
                 var len = (ushort) mp.GetType().GetField("len", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(mp)!;
-                if (Main.netMode is NetmodeID.MultiplayerClient && Type >= 0)
-                    NetModuleLoader.NetModuleDiagnosticsUI?.CountSentMessage(Type, len - 4); // 4 bytes for the id
+                if (Main.netMode is NetmodeID.MultiplayerClient)
+                    NetModuleLoader.NetModuleDiagnosticsUI?.CountSentMessage(Type, len - 3); // 2 bytes for ushort id + 1 byte for compress flag
             }
 
             if (runLocally) Receive();
@@ -108,7 +108,7 @@ public abstract class NetModule
     public static void ReceiveModule(BinaryReader reader, int whoAmI) {
         var start = (int) reader.BaseStream.Position;
 
-        var id = reader.ReadInt32();
+        var id = reader.ReadUInt16();
         var compressed = reader.ReadBoolean();
 
         var module = NetModuleLoader.Get(id);
@@ -136,7 +136,7 @@ public abstract class NetModule
         module.Receive();
 
         var length = (int) reader.BaseStream.Position - start;
-        if (Main.netMode is NetmodeID.MultiplayerClient && id >= 0)
-            NetModuleLoader.NetModuleDiagnosticsUI?.CountReadMessage(id, length - 4); // 4 bytes for the id
+        if (Main.netMode is NetmodeID.MultiplayerClient)
+            NetModuleLoader.NetModuleDiagnosticsUI?.CountReadMessage(id, length - 3); // 2 bytes for ushort id + 1 byte for compress flag
     }
 }
