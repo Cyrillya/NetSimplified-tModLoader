@@ -7,15 +7,15 @@
         <LangVersion>latest</LangVersion>
         <GenerateDocumentationFile>True</GenerateDocumentationFile>
         <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
-        <PackageVersion>2.0.0</PackageVersion>
+        <PackageVersion>2.1</PackageVersion>
         <Title>Net Simplified</Title>
         <Authors>Cyrilly</Authors>
         <PackageLicenseUrl>https://github.com/Cyrillya/NetSimplified-tModLoader/blob/master/LICENSE.txt</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/Cyrillya/NetSimplified-tModLoader</RepositoryUrl>
         <RepositoryType>DLL Library</RepositoryType>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-        <AssemblyVersion>2.0.0</AssemblyVersion>
-        <FileVersion>2.0.0</FileVersion>
+        <AssemblyVersion>2.1</AssemblyVersion>
+        <FileVersion>2.1</FileVersion>
         <NeutralLanguage>zh-Hans</NeutralLanguage>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
