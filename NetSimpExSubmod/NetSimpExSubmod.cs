@@ -2,12 +2,15 @@ using System.IO;
 using System.Reflection;
 using NetSimpExSubmod.Packets;
 using NetSimplified;
+using Terraria;
 using Terraria.ModLoader;
 
 namespace NetSimpExSubmod;
 
 public class NetSimpExSubmod : Mod
 {
+    internal static FlexibleModule SaySmthModule;
+
     public override void Load() {
         // 设置当前模组实例以供 NetModuleLoader 使用
         NetModuleLoader.CurrentMod = this;
@@ -23,7 +26,9 @@ public class NetSimpExSubmod : Mod
         // 这里演示如何自行加载并注册 NetModule 实例，通常不需要这么做
         NetModuleLoader.Register(new ReplyListPacket());
         NetModuleLoader.Register(new ReplySumPacket());
-        NetModuleLoader.Register(new SaySmthPacket());
+        SaySmthModule = NetModuleLoader.Register(new FlexibleModule("SaySmth",
+            () => Main.NewText(SaySmthModule.GetValue<string>(0), Main.DiscoColor),
+            [typeof(string)]));
     }
 
     public override object Call(params object[] args) {

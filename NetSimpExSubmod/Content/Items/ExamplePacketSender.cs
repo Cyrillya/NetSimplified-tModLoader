@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using NetSimpExSubmod.Packets;
 using NetSimplified;
 using NetSimplifiedExample.Packets;
 using Terraria;
@@ -29,7 +28,8 @@ public class ExamplePacketSender : ModItem
 
     public override bool CanUseItem(Player player) {
         if (Main.netMode is NetmodeID.Server) {
-            SaySmthPacket.Get("下面的包是由附属模组发送的！").Send(player.whoAmI);
+            NetSimpExSubmod.SaySmthModule.Set(["下面的包是由附属模组发送的！"]);
+            NetSimpExSubmod.SaySmthModule.Send(player.whoAmI);
             CrossMod.GetExternalModule<InventoryPacket>("NetSimplifiedExample")
                 .Set(player.whoAmI)
                 .SendAsExternalModule(player.whoAmI);
