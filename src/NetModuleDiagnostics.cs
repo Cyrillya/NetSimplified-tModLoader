@@ -170,5 +170,16 @@ public class NetModuleDiagnostics : INetDiagnosticsUI
             BytesSent += messageLength;
         }
     }
+
+    // Not needed
+    public void RotateSendRecvCounters()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void GetLastSentRecvBytes(out int sent, out int recv)
+    {
+        throw new NotImplementedException();
+    }
 }
 #pragma warning restore CS1591

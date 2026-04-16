@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-	<Import Project="..\tModLoader.targets" />
+	<Import Project="..\..\tModLoader.targets" />
     <ItemGroup>
         <ProjectReference Include="..\src\NetSimplified.csproj">
             <Project>{00000000-0000-0000-0000-000000000000}</Project>
