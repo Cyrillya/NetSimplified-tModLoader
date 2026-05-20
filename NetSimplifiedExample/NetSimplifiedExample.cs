@@ -12,7 +12,8 @@ public class NetSimplifiedExample : Mod
     // 在这里注册 NetModuleLoader 并显式加载 AutoSyncType 与 NetModule
     public override void Load() {
         // 在 2.0 版本，如果不需要 Diagnostic 工具，可以不注册 NetModuleLoader 作为 ModType
-        // AddContent<NetModuleLoader>();
+        // Diagnostic 工具的绘制层插入参考DiagnosticsUIExampleSystem.cs
+        AddContent<NetModuleLoader>();
         // 设置当前模组实例以供 NetModuleLoader 使用
         NetModuleLoader.CurrentMod = this;
 
