@@ -31,7 +31,7 @@
 在 `Mod` [主类](NetSimplifiedExample/NetSimplifiedExample.cs)中:
 
 - 在 `Load` 注册需要用到的 `NetModule` 以激活模组功能（重要）
-- 在 `Load` 注册 `AutoSyncType` 以激活字段[自动传输功能](# AutoSync 自动传输特性)
+- 在 `Load` 注册 `AutoSyncType` 以激活字段[自动传输功能](#autosync-自动传输特性)
 - 在 `HandlePacket` 调用 `NetModule.ReceiveModule`，以让库接收并处理二进制数据包
 
 此外，还有一些可选功能:
