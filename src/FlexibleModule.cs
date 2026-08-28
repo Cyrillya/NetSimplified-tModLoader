@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using NetSimplified.Syncing;
@@ -152,6 +152,9 @@ public sealed class FlexibleModule : NetModule
     public override void Receive() {
         _receiveAction?.Invoke(this);
     }
+
+    /// <summary>该 <see cref="FlexibleModule" /> 的字段总数</summary>
+    public int ValueCount => _values.Length;
 
     // 合成的 MemberInfo，仅携带单个 Attribute，供 AutoSyncType 读取字段级属性。
     private sealed class AttributeMemberInfo : MemberInfo

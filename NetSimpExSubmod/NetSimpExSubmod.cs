@@ -1,7 +1,10 @@
-﻿using System.IO;
-using System.Reflection;
-using NetSimpExSubmod.Packets;
+﻿using NetSimpExSubmod.Packets;
+
 using NetSimplified;
+
+using System.IO;
+using System.Reflection;
+
 using Terraria.ModLoader;
 
 namespace NetSimpExSubmod;

@@ -118,9 +118,10 @@ internal static class PacketDetailFormatter
     public static string[] BuildDetailLines(PacketLogEntry entry, NetModuleDiagnostics diagnostics) {
         var lines = new List<string>();
         var direction = entry.Direction == PacketDirection.Sent ? "发送 (Sent)" : "接收 (Received)";
+        var module = diagnostics.GetModule(entry.ModuleId);
         lines.Add($"方向: {direction}");
         lines.Add($"序号: {entry.Sequence}");
-        lines.Add($"模块: {diagnostics.GetModule(entry.ModuleId)?.Name ?? "?"} (Type {entry.ModuleId})");
+        lines.Add($"模块: {module?.Name ?? "?"} (Type {entry.ModuleId})");
         lines.Add($"时间: {entry.Time:yyyy-MM-dd HH:mm:ss.fff}");
         lines.Add($"长度: {entry.Length} 字节");
 
@@ -134,10 +135,18 @@ internal static class PacketDetailFormatter
             lines.Add($"Type: {type}");
         }
 
-        var fieldLines = ParseFields(entry.Data, diagnostics.GetModule(entry.ModuleId)?.Name);
-        if (fieldLines.Count > 0) {
-            lines.Add("-- AutoSync 字段 --");
-            lines.AddRange(fieldLines);
+        if (module is FlexibleModule flex) {
+            var fieldLines = ParseFlexModuleFields(entry.Data, flex);
+            if (fieldLines.Count > 0) {
+                lines.Add("-- FlexibleModule 字段 --");
+                lines.AddRange(fieldLines);
+            }
+        } else {
+            var fieldLines = ParseFields(entry.Data, module?.Name);
+            if (fieldLines.Count > 0) {
+                lines.Add("-- AutoSync 字段 --");
+                lines.AddRange(fieldLines);
+            }
         }
 
         lines.Add("-- Hex (前 256 字节) --");
@@ -157,6 +166,26 @@ internal static class PacketDetailFormatter
             foreach (var field in fields) {
                 var value = AutoSyncHandler.ReadValue(reader, field.FieldType, field);
                 result.Add($"{field.Name} = {value?.ToString() ?? "null"}");
+            }
+        }
+        catch {
+            // 字段解析失败，仅保留已解析的部分
+        }
+        return result;
+    }
+
+    private static List<string> ParseFlexModuleFields(byte[] data, FlexibleModule module) {
+        var result = new List<string>();
+        if (module == null || data.Length < 4) return result;
+        if (module.ValueCount == 0) return result;
+
+        try {
+            using var ms = new MemoryStream(data, 4, data.Length - 4, writable: false);
+            using var reader = new BinaryReader(ms);
+            module.Read(reader);
+            for (int i = 0; i < module.ValueCount; i++) {
+                var value = module.GetValue(i);
+                result.Add($"{i}: {value?.GetType().Name} = {value?.ToString() ?? "null"}");
             }
         }
         catch {
