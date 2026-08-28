@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 using NetSimpExSubmod.Packets;
 using NetSimplified;
@@ -18,9 +18,9 @@ public class NetSimpExSubmod : Mod
         NetModuleLoader.LoadAutoSyncsFrom(Assembly.GetExecutingAssembly());
 
         // 不需要注册引用模组的 NetModule 实例，引用模组的包由它自己处理，附属模组可以通过其公开的 Mod.Call API 获取并发送
-        // NetModuleLoader.LoadNetModules();
 
         // 这里演示如何自行加载并注册 NetModule 实例，通常不需要这么做
+        // NetModuleLoader.LoadNetModules();
         NetModuleLoader.Register(new ReplyListPacket());
         NetModuleLoader.Register(new ReplySumPacket());
     }

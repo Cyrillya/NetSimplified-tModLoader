@@ -1,11 +1,13 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+
 using NetSimplified;
+
 using Terraria;
 using Terraria.ModLoader;
 
-namespace NetSimplifiedExample.Common.UI;
+namespace NetSimplifiedExample.UI;
 
 /// <summary>
 ///     诊断 UI 的示例接入方式：NetSimplified 库本身不提供开关键与绘制时机，

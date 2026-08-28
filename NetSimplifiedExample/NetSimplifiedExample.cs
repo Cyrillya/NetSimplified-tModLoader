@@ -14,6 +14,7 @@ public class NetSimplifiedExample : Mod
         // 注册 NetModuleLoader 以启用网络诊断（数据监视器），并注册服务器诊断指令
         AddContent<NetModuleLoader>();
         AddContent<NetSimplifiedDiagnosticsCommand>();
+
         // 设置当前模组实例以供 NetModuleLoader 使用
         NetModuleLoader.CurrentMod = this;
 
