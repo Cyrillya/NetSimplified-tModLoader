@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using Microsoft.Xna.Framework;
 using Terraria.ModLoader;
@@ -6,13 +6,13 @@ using Terraria.ModLoader;
 namespace NetSimplified;
 
 /// <summary>
-///     查看网络诊断数据的指令（主要用于服务器端，客户端亦可使用）。
+///     查看网络诊断数据的指令（主要用于服务器端，客户端亦可使用）。<br/>
 ///     需由模组在 Load 中通过 <c>AddContent&lt;NetSimplifiedDiagnosticsCommand&gt;()</c> 注册。
 ///     <para>
-///         子命令：
-///         <c>nsdiag traffic</c> 各模块收发流量总表；
-///         <c>nsdiag log [count]</c> 最近收发包记录（默认 10，上限 256）；
-///         <c>nsdiag detail &lt;seq&gt;</c> 某条记录的详细信息；
+///         子命令：<br/>
+///         <c>nsdiag traffic</c> 各模块收发流量总表<br/>
+///         <c>nsdiag log [count]</c> 最近收发包记录（默认 10，上限 256）<br/>
+///         <c>nsdiag detail &lt;seq&gt;</c> 某条记录的详细信息<br/>
 ///         <c>nsdiag reset</c> 重置所有数据。
 ///     </para>
 /// </summary>

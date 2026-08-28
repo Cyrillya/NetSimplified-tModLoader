@@ -1,3 +1,4 @@
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using NetSimplified;
@@ -19,8 +20,12 @@ public class ExampleDiagnosticsUISystem : ModSystem
     private void EnsureCreated() {
         if (_trafficMonitor != null) return;
         if (NetModuleLoader.Diagnostics == null) return;
-        _trafficMonitor = new ModuleTrafficMonitor(NetModuleLoader.Diagnostics);
-        _logViewer = new ModuleLogViewer(NetModuleLoader.Diagnostics);
+        _trafficMonitor = new ModuleTrafficMonitor(NetModuleLoader.Diagnostics) {
+            Position = new Point(1162, 10)
+        };
+        _logViewer = new ModuleLogViewer(NetModuleLoader.Diagnostics) {
+            Position = new Point(574, 10)
+        };
     }
 
     public override void PostUpdateInput() {

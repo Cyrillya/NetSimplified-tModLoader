@@ -1,4 +1,4 @@
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ReLogic.Graphics;
 using Terraria.GameContent;
@@ -9,7 +9,7 @@ namespace NetSimplified;
 ///     UI 绘制辅助：仅使用原版贴图（<see cref="TextureAssets.MagicPixel" /> 纯白像素）绘制面板边框，
 ///     文字使用 <c>spriteBatch.DrawString</c>。
 /// </summary>
-internal static class UiDrawing
+internal static class UIDrawing
 {
     /// <summary>绘制一个带边框的面板（边框向外扩展 <paramref name="borderWidth" /> 像素）</summary>
     public static void DrawPanel(SpriteBatch spriteBatch, Rectangle rect, Color borderColor, Color backgroundColor, int borderWidth = 1) {
@@ -17,8 +17,8 @@ internal static class UiDrawing
 
         spriteBatch.Draw(pixel, new Rectangle(rect.X - borderWidth, rect.Y - borderWidth, rect.Width + borderWidth * 2, borderWidth), borderColor);
         spriteBatch.Draw(pixel, new Rectangle(rect.X - borderWidth, rect.Y + rect.Height, rect.Width + borderWidth * 2, borderWidth), borderColor);
-        spriteBatch.Draw(pixel, new Rectangle(rect.X - borderWidth, rect.Y, borderWidth, rect.Height + borderWidth * 2), borderColor);
-        spriteBatch.Draw(pixel, new Rectangle(rect.X + rect.Width, rect.Y, borderWidth, rect.Height + borderWidth * 2), borderColor);
+        spriteBatch.Draw(pixel, new Rectangle(rect.X - borderWidth, rect.Y - borderWidth, borderWidth, rect.Height + borderWidth * 2), borderColor);
+        spriteBatch.Draw(pixel, new Rectangle(rect.X + rect.Width, rect.Y - borderWidth, borderWidth, rect.Height + borderWidth * 2), borderColor);
         spriteBatch.Draw(pixel, rect, backgroundColor);
     }
 

@@ -1,4 +1,4 @@
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ReLogic.Graphics;
 using Terraria;
@@ -7,7 +7,7 @@ using Terraria.GameContent;
 namespace NetSimplified;
 
 /// <summary>
-///     监视所有已注册 NetModule 在当前端已接收 / 已发送总流量的 UI。
+///     监视所有已注册 NetModule 在当前端已接收 / 已发送总流量的 UI。<br/>
 ///     本类只负责绘制，开关键与绘制时机由使用库的 Mod 自行处理。
 /// </summary>
 public sealed class ModuleTrafficMonitor
@@ -22,6 +22,9 @@ public sealed class ModuleTrafficMonitor
 
     /// <summary>UI 是否可见，由宿主 Mod 控制</summary>
     public bool Visible { get; set; }
+
+    /// <summary>UI 左上角坐标，由宿主 Mod 控制</summary>
+    public Point Position { get; set; } = new Point(10, 10);
 
     /// <summary>创建流量监视 UI，读取 <paramref name="diagnostics" /> 的数据</summary>
     public ModuleTrafficMonitor(NetModuleDiagnostics diagnostics) {
@@ -49,9 +52,9 @@ public sealed class ModuleTrafficMonitor
     public void Draw(SpriteBatch spriteBatch) {
         var count = _diagnostics.ModuleCount;
         var numCols = count == 0 ? 0 : (count - 1) / MaxLinesPerColumn;
-        const int x = 10;
+        int x = Position.X;
         var xBuf = x + 10;
-        const int y = 10;
+        int y = Position.Y;
         var yBuf = y + 10;
 
         var width = 232;
@@ -73,12 +76,12 @@ public sealed class ModuleTrafficMonitor
             var height = lineHeight * (lineCountInCol + 2);
             var heightBuf = height + 10;
             var rect = new Rectangle(x + widthBuf * i, y, width, heightBuf);
-            UiDrawing.DrawPanel(spriteBatch, rect, Color.White * 0.8f, new Color(0, 0, 0, 180));
+            UIDrawing.DrawPanel(spriteBatch, rect, Color.White * 0.8f, new Color(0, 0, 0, 180));
 
             var modPos = new Vector2(xBuf + widthBuf * i, yBuf);
             var headerPos = modPos + new Vector2(_firstColumnWidth, 0);
-            UiDrawing.DrawText(spriteBatch, RxTxString, headerPos, Color.White);
-            UiDrawing.DrawText(spriteBatch, NetModuleString, modPos, Color.White);
+            UIDrawing.DrawText(spriteBatch, RxTxString, headerPos, Color.White);
+            UIDrawing.DrawText(spriteBatch, NetModuleString, modPos, Color.White);
         }
 
         Vector2 position = default;
@@ -98,14 +101,14 @@ public sealed class ModuleTrafficMonitor
         var color = Main.hslToRgb(0.3f * (1f - heat), 1f, 0.5f);
 
         var pos = position;
-        UiDrawing.DrawText(spriteBatch, title + ": ", pos, color);
+        UIDrawing.DrawText(spriteBatch, title + ": ", pos, color);
         pos.X += _firstColumnWidth;
-        UiDrawing.DrawText(spriteBatch, "rx:" + counter.TimesReceived, pos, color);
+        UIDrawing.DrawText(spriteBatch, "rx:" + counter.TimesReceived, pos, color);
         pos.X += 70f;
-        UiDrawing.DrawText(spriteBatch, counter.BytesReceived.ToString(), pos, color);
+        UIDrawing.DrawText(spriteBatch, counter.BytesReceived.ToString(), pos, color);
         pos.X += 70f;
-        UiDrawing.DrawText(spriteBatch, "tx:" + counter.TimesSent, pos, color);
+        UIDrawing.DrawText(spriteBatch, "tx:" + counter.TimesSent, pos, color);
         pos.X += 70f;
-        UiDrawing.DrawText(spriteBatch, counter.BytesSent.ToString(), pos, color);
+        UIDrawing.DrawText(spriteBatch, counter.BytesSent.ToString(), pos, color);
     }
 }

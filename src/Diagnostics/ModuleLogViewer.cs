@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -11,7 +11,7 @@ using Terraria.GameInput;
 namespace NetSimplified;
 
 /// <summary>
-///     显示最近收 / 发 NetModule 包列表的 UI，悬停某条记录可查看其详细数据（元信息 + Hex 转储 + AutoSync 字段解析）。
+///     显示最近收 / 发 NetModule 包列表的 UI，悬停某条记录可查看其详细数据（元信息 + Hex 转储 + AutoSync 字段解析）。<br/>
 ///     本类只负责绘制，开关键与绘制时机由使用库的 Mod 自行处理。
 /// </summary>
 public sealed class ModuleLogViewer
@@ -27,6 +27,9 @@ public sealed class ModuleLogViewer
     /// <summary>UI 是否可见，由宿主 Mod 控制</summary>
     public bool Visible { get; set; }
 
+    /// <summary>UI 左上角坐标，由宿主 Mod 控制</summary>
+    public Point Position { get; set; } = new Point(10, 10);
+
     /// <summary>创建收发包日志查看 UI，读取 <paramref name="diagnostics" /> 的数据</summary>
     public ModuleLogViewer(NetModuleDiagnostics diagnostics) {
         _diagnostics = diagnostics;
@@ -37,13 +40,17 @@ public sealed class ModuleLogViewer
         var entries = _diagnostics.GetRecentLog(NetModuleDiagnostics.MaxLogEntries);
 
         var panelWidth = 580;
-        var panel = new Rectangle(10, Main.screenHeight - VisibleRows * RowHeight - HeaderHeight - 12, panelWidth,
-            VisibleRows * RowHeight + HeaderHeight + 8);
-        UiDrawing.DrawPanel(spriteBatch, panel, Color.White * 0.8f, new Color(0, 0, 0, 180));
-        UiDrawing.DrawText(spriteBatch, "最近收发包日志 (滚轮滚动，悬停查看详情)", new Vector2(panel.X + 8, panel.Y + 6), Color.White);
+        var panel = new Rectangle(Position.X, Position.Y, panelWidth, VisibleRows * RowHeight + HeaderHeight + 8);
+        UIDrawing.DrawPanel(spriteBatch, panel, Color.White * 0.8f, new Color(0, 0, 0, 180));
+        UIDrawing.DrawText(spriteBatch, "最近收发包日志 (滚轮滚动，悬停查看详情)", new Vector2(panel.X + 8, panel.Y + 6), Color.White);
+
+        string whoAmIText = Main.myPlayer.ToString();
+        int whoAmIWidth = (int) UIDrawing.MeasureText(whoAmIText).X;
+        UIDrawing.DrawText(spriteBatch, whoAmIText, new Vector2(panel.Right - whoAmIWidth - 8, panel.Y + 6), Color.White);
 
         // 滚动（鼠标位于面板内时滚轮生效）
         if (panel.Contains(Main.MouseScreen.ToPoint())) {
+            PlayerInput.LockVanillaMouseScroll("NetSimplified/Diagnostics");
             var delta = PlayerInput.ScrollWheelDelta;
             if (delta != 0) {
                 var maxOffset = Math.Max(0, entries.Length - VisibleRows);
@@ -58,14 +65,16 @@ public sealed class ModuleLogViewer
         for (var i = _scrollOffset; i < Math.Min(_scrollOffset + VisibleRows, entries.Length); i++) {
             var entry = entries[i];
             var rowRect = new Rectangle(listX, listY + (i - _scrollOffset) * RowHeight, panel.Width - 12, RowHeight);
-            if (rowRect.Contains(Main.MouseScreen.ToPoint()))
+            if (rowRect.Contains(Main.MouseScreen.ToPoint())) {
                 _hovered = entry;
+                UIDrawing.DrawPanel(spriteBatch, rowRect, Main.OurFavoriteColor * 0.8f, Color.Transparent);
+            }
 
             var color = entry.Direction == PacketDirection.Sent ? new Color(130, 200, 255) : new Color(255, 180, 120);
             var arrow = entry.Direction == PacketDirection.Sent ? "-->" : "<--";
             var name = Truncate(_diagnostics.GetModule(entry.ModuleId)?.Name ?? "?", 22);
             var text = $"{entry.Sequence,5} {arrow} {name,-22} {entry.Length,5}B  {entry.Time:HH:mm:ss}";
-            UiDrawing.DrawText(spriteBatch, text, new Vector2(rowRect.X, rowRect.Y), color);
+            UIDrawing.DrawText(spriteBatch, text, new Vector2(rowRect.X, rowRect.Y), color);
         }
 
         if (_hovered != null)
@@ -77,7 +86,7 @@ public sealed class ModuleLogViewer
 
         float maxWidth = 0;
         foreach (var line in lines)
-            maxWidth = Math.Max(maxWidth, UiDrawing.MeasureText(line).X);
+            maxWidth = Math.Max(maxWidth, UIDrawing.MeasureText(line).X);
         var width = (int) maxWidth + 16;
         var height = lines.Length * 15 + 12;
 
@@ -85,11 +94,11 @@ public sealed class ModuleLogViewer
         if (rect.Right > Main.screenWidth) rect.X = Math.Max(0, panel.X - width - 8);
         rect.Y = Math.Clamp(rect.Y, 0, Math.Max(0, Main.screenHeight - rect.Height));
 
-        UiDrawing.DrawPanel(spriteBatch, rect, Color.White * 0.8f, new Color(0, 0, 0, 230));
+        UIDrawing.DrawPanel(spriteBatch, rect, Color.White * 0.8f, new Color(0, 0, 0, 230));
 
         var pos = new Vector2(rect.X + 8, rect.Y + 6);
         foreach (var line in lines) {
-            UiDrawing.DrawText(spriteBatch, line, pos, Color.White);
+            UIDrawing.DrawText(spriteBatch, line, pos, Color.White);
             pos.Y += 15;
         }
     }
