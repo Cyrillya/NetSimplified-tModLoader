@@ -68,6 +68,8 @@ public class YourMod : Mod {
 
 如果你想要知道每一行都是干什么用的，你可以参考[示例模组](NetSimplifiedExample/NetSimplifiedExample.cs)中的注释
 
+> **注意**：`NetModuleLoader.LoadNetModules()` 会基于 `NetModuleLoader.CurrentMod`（即上方的 `this`）自动获取当前模组的程序集来注册其中的 `NetModule`，因此务必在调用前先设置 `NetModuleLoader.CurrentMod = this;`。若你的 `NetModule` 与 `Mod` 主类不在同一程序集，请改用 `NetModuleLoader.LoadNetModules(Assembly)` 显式传入程序集。
+
 ***
 
 ## 配套示例模组

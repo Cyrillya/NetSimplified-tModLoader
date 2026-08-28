@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using NetSimplified;
@@ -21,7 +21,7 @@ public class NetSimplifiedExample : Mod
         NetModuleLoader.LoadAutoSyncsFrom(typeof(NetModuleLoader).Assembly);
         NetModuleLoader.LoadAutoSyncsFrom(Assembly.GetExecutingAssembly());
 
-        // 加载并注册 NetModule 实例
+        // 加载并注册 NetModule 实例（基于上方设置的 CurrentMod 自动获取本模组程序集）
         NetModuleLoader.LoadNetModules();
     }
 

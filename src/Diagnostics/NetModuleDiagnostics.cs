@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using Terraria.ModLoader;
 
 namespace NetSimplified;
@@ -161,47 +160,57 @@ public sealed class NetModuleDiagnostics
     /// <summary>获取 ModPacket 负载起点（写 Type 之前的流位置，即 ModPacket 头部长度）</summary>
     internal static int GetPacketPayloadStart(ModPacket packet) {
         try {
-            var outStream = typeof(BinaryWriter)
-                .GetProperty("OutStream", BindingFlags.NonPublic | BindingFlags.Instance)?
-                .GetValue(packet) as Stream;
-            return outStream == null ? 0 : (int) outStream.Position;
+            return (int) packet.BaseStream.Position;
         }
         catch {
             return 0;
         }
     }
 
-    /// <summary>从已 Send 的 ModPacket 中提取负载字节（反射读取 buf/len 私有字段）</summary>
+    /// <summary>从 ModPacket 中提取负载字节（读取 [payloadStart, 当前写位置) 的已写入数据）</summary>
     internal static byte[] CaptureSentPayload(ModPacket packet, int payloadStart) {
         try {
-            var type = packet.GetType();
-            var bufField = type.GetField("buf", BindingFlags.NonPublic | BindingFlags.Instance);
-            var lenField = type.GetField("len", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (bufField == null || lenField == null) return null;
+            if (packet.BaseStream is not MemoryStream outStream || !outStream.CanSeek || !outStream.CanRead)
+                return null;
 
-            var buf = bufField.GetValue(packet) as byte[];
-            var len = (ushort) lenField.GetValue(packet);
-            if (buf == null || len < payloadStart) return null;
+            var end = (int) outStream.Position;
+            if (end < payloadStart) return null;
 
-            var slice = new byte[len - payloadStart];
-            Array.Copy(buf, payloadStart, slice, 0, slice.Length);
-            return slice;
+            var original = outStream.Position;
+            try {
+                outStream.Position = payloadStart;
+                var slice = new byte[end - payloadStart];
+                var read = outStream.Read(slice, 0, slice.Length);
+                if (read < slice.Length) return null;
+                return slice;
+            }
+            finally {
+                outStream.Position = original;
+            }
         }
         catch {
             return null;
         }
     }
 
-    /// <summary>从收包 reader 的底层 MemoryStream 中截取 [start, end) 负载字节</summary>
+    /// <summary>从收包 reader 的底层流中截取 [start, end) 负载字节（通过流定位读取，不依赖底层缓冲是否可公开访问）</summary>
     internal static byte[] CaptureReceivedPayload(BinaryReader reader, int start, int end) {
         try {
             if (end < start) return null;
-            if (reader.BaseStream is not MemoryStream ms) return null;
+            var stream = reader.BaseStream;
+            if (stream == null || !stream.CanSeek || !stream.CanRead) return null;
 
-            var buf = ms.GetBuffer();
-            var slice = new byte[end - start];
-            Array.Copy(buf, start, slice, 0, slice.Length);
-            return slice;
+            var original = stream.Position;
+            try {
+                stream.Position = start;
+                var slice = new byte[end - start];
+                var read = stream.Read(slice, 0, slice.Length);
+                if (read < slice.Length) return null;
+                return slice;
+            }
+            finally {
+                stream.Position = original;
+            }
         }
         catch {
             return null;

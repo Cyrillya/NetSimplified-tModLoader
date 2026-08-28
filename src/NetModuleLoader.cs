@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using NetSimplified.Syncing;
 using Terraria.ModLoader;
 
@@ -79,7 +79,7 @@ public class NetModuleLoader : ModSystem
                     // 如果可以直接 cast，则使用当前模组的 handler 注册
                     if (obj is AutoSyncType localInstance) {
                         AutoSyncHandler.RegisterType(localInstance);
-                        CurrentMod?.Logger.Info($"已为类型 {localInstance.Type} 绑定 AutoSyncType: {type.Name}");
+                        CurrentMod?.Logger?.Info($"已为类型 {localInstance.Type} 绑定 AutoSyncType: {type.Name}");
                         continue;
                     }
 
@@ -98,7 +98,7 @@ public class NetModuleLoader : ModSystem
 
                     var adapter = new ReflectiveAutoSyncAdapter(associatedType, obj, sendMethod, readMethod, customAttrType);
                     AutoSyncHandler.RegisterType(adapter);
-                    CurrentMod?.Logger.Info($"已为类型 {adapter.Type} 绑定外部 AutoSyncType 适配器: {type.Name}");
+                    CurrentMod?.Logger?.Info($"已为类型 {adapter.Type} 绑定外部 AutoSyncType 适配器: {type.Name}");
                 }
                 catch {
                     // 忽略无法实例化或适配的 AutoSyncType
@@ -113,39 +113,31 @@ public class NetModuleLoader : ModSystem
     /// <summary>
     ///     加载并注册所有继承自 NetModule 的类型。 <br/>
     ///     在调用前，请先确保所有所需的 AutoSyncType 已通过 <see cref="LoadAutoSyncsFrom" /> 注册，以免出现 AutoSyncType 未注册导致的错误。<br/>
-    ///     在调用前，请先设置 <see cref="Mod" /> 字段，以确保 NetModule 能正确设置 Mod 字段。建议在 <see cref="Mod.Load" /> 中设置。
+    ///     在调用前，请先设置 <see cref="CurrentMod" /> 字段（建议在 <see cref="Mod.Load" /> 中设置）。本方法会扫描 NetSimplified 程序集，
+    ///     以及 <see cref="CurrentMod" /> 所在模组的程序集（未设置 <see cref="CurrentMod" /> 时回退到调用方程序集）。
     /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static void LoadNetModules() {
         LoadNetModulesFrom(typeof(NetModuleLoader).Assembly);
-        LoadNetModulesFrom(GetCallingModAssembly());
+
+        // 最可靠的程序集来源是 CurrentMod（模组在调用前必须设置）。栈回溯/GetCallingAssembly 在 tModLoader 环境下不可靠，
+        // 因此仅在未设置 CurrentMod 时才使用调用方程序集（NoInlining 防止内联导致误判）。
+        var modAssembly = CurrentMod?.GetType().Assembly;
+        if (modAssembly == null || modAssembly == typeof(NetModuleLoader).Assembly)
+            modAssembly = Assembly.GetCallingAssembly();
+
+        LoadNetModulesFrom(modAssembly);
     }
 
     /// <summary>
-    ///     通过栈回溯获取调用方的程序集。<br />
-    ///     不使用 <see cref="Assembly.GetCallingAssembly()" />，因为它会在本方法被内联时返回错误的程序集，导致模组的 NetModule 无法被注册。
+    ///     加载并注册所有继承自 NetModule 的类型，其中 NetModule 来自 <paramref name="modAssembly" />（通常为
+    ///     调用方模组的 <see cref="Assembly.GetExecutingAssembly()" />）。<br/>
+    ///     适用于需要显式指定程序集的场景（如 NetModule 与 Mod 主类不在同一程序集）。
     /// </summary>
-    private static Assembly GetCallingModAssembly() {
-        var self = typeof(NetModuleLoader).Assembly;
-        try {
-            var stack = new StackTrace();
-            for (var i = 1; i < stack.FrameCount; i++) {
-                var method = stack.GetFrame(i)?.GetMethod();
-                var asm = method?.DeclaringType?.Assembly;
-                if (asm == null || asm == self) continue;
-
-                // 跳过运行时/系统程序集
-                var name = asm.GetName().Name;
-                if (name.StartsWith("System", StringComparison.Ordinal)
-                    || name.StartsWith("mscorlib", StringComparison.Ordinal)
-                    || name.StartsWith("Microsoft.", StringComparison.Ordinal)
-                    || name == "netstandard") continue;
-                return asm;
-            }
-        }
-        catch {
-            // 栈回溯失败时回退到旧行为
-        }
-        return Assembly.GetCallingAssembly();
+    public static void LoadNetModules(Assembly modAssembly) {
+        LoadNetModulesFrom(typeof(NetModuleLoader).Assembly);
+        if (modAssembly != null && modAssembly != typeof(NetModuleLoader).Assembly)
+            LoadNetModulesFrom(modAssembly);
     }
 
     /// <summary>
@@ -154,25 +146,34 @@ public class NetModuleLoader : ModSystem
     /// </summary>
     public static void LoadNetModulesFrom(Assembly asm) {
         if (asm == null) return;
+
+        Type[] types;
         try {
-            var baseType = typeof(NetModule);
-            foreach (var type in asm.GetTypes()) {
-                if (type.IsAbstract) continue;
-                if (!baseType.IsAssignableFrom(type)) continue;
-                var ctor = type.GetConstructor(Type.EmptyTypes);
-                if (ctor == null) continue;
-                try {
-                    var instance = (NetModule) Activator.CreateInstance(type)!;
-                    Register(instance);
-                    CurrentMod?.Logger.Info("已加载 NetModule: " + instance.Name);
-                }
-                catch {
-                    // 忽略无法实例化的 NetModule
-                }
-            }
+            types = asm.GetTypes();
+        }
+        catch (ReflectionTypeLoadException e) {
+            // 个别类型加载失败时仍处理其余可用的类型，避免整个注册被跳过
+            types = e.Types.Where(t => t != null).ToArray();
         }
         catch {
-            // 忽略反射错误
+            return;
+        }
+
+        var baseType = typeof(NetModule);
+        foreach (var type in types) {
+            if (type.IsAbstract) continue;
+            if (!baseType.IsAssignableFrom(type)) continue;
+            var ctor = type.GetConstructor(Type.EmptyTypes);
+            if (ctor == null) continue;
+            try {
+                var instance = (NetModule) Activator.CreateInstance(type)!;
+                Register(instance);
+                CurrentMod?.Logger?.Info("已加载 NetModule: " + instance.Name);
+            }
+            catch (Exception e) {
+                // 忽略无法实例化的 NetModule，但记录错误便于排查
+                CurrentMod?.Logger?.Warn($"NetModule 注册失败 ({type.FullName}): {e.Message}");
+            }
         }
     }
 

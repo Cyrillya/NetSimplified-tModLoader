@@ -51,11 +51,13 @@ public abstract class NetModule
                 mp.Write(Type); // 包类型 ID
                 AutoSyncHandler.HandleAutoSend(this, mp);
                 Send(mp);
+
+                var payload = diagnostics != null ? NetModuleDiagnostics.CaptureSentPayload(mp, payloadStart) : null;
                 // 发送
                 mp.Send(toClient, ignoreClient);
 
                 if (diagnostics != null && Type >= 0)
-                    diagnostics.CountSentMessage(Type, NetModuleDiagnostics.CaptureSentPayload(mp, payloadStart));
+                    diagnostics.CountSentMessage(Type, payload);
             }
 
             if (runLocally) Receive();
