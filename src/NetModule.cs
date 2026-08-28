@@ -38,7 +38,6 @@ public abstract class NetModule
     /// <param name="toClient">如果不是 -1, 则包<b>只会</b>发送给对应的客户端</param>
     /// <param name="ignoreClient">如果不是 -1, 则包<b>不会</b>发送给对应的客户端</param>
     /// <param name="runLocally">如果为 <see langword="true" /> 则在发包时会调用 <see cref="Receive()" /> 方法</param>
-    /// <param name="handler">自定义的自动传输处理器</param>
     public void Send(int toClient = -1, int ignoreClient = -1, bool runLocally = false) {
         if (PreSend(toClient, ignoreClient)) {
             if (Main.netMode != NetmodeID.SinglePlayer) {

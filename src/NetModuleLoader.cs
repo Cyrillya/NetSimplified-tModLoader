@@ -177,6 +177,21 @@ public class NetModuleLoader : ModSystem
         }
     }
 
+    /// <summary>
+    ///     注册一个 <see cref="NetModule" /> 实例。注册后该模块才可通过 <see cref="Get{T}" /> / <see cref="Get(string)" /> /
+    ///     <see cref="Get(int)" /> 获取，并参与收发。
+    /// </summary>
+    /// <typeparam name="T"><see cref="NetModule" /> 的派生类型</typeparam>
+    /// <param name="netModule">
+    ///     要注册的模块实例。对于 <see cref="FlexibleModule" />，请使用 <see cref="FlexibleModule(string, Action{FlexibleModule}, Type[], Attribute[])" />
+    ///     构造后传入；其余情况通常由 <see cref="LoadNetModules()" /> 自动创建并注册。
+    /// </param>
+    /// <returns>注册后的模块实例（即 <paramref name="netModule" /> 本身，便于链式调用与保存）</returns>
+    /// <exception cref="Exception">当已存在同 <see cref="NetModule.Name" /> 的模块时抛出</exception>
+    /// <remarks>
+    ///     在调用前，请先设置 <see cref="CurrentMod" /> 以确保模块能正确关联所属 <see cref="Mod" />；
+    ///     若模块的字段需要自动传输，请确保相关 <see cref="AutoSyncType" /> 已通过 <see cref="LoadAutoSyncsFrom" /> 注册。
+    /// </remarks>
     public static T Register<T>(T netModule) where T : NetModule {
         _modules ??= new List<NetModule>();
         FieldInfos ??= new Dictionary<string, FieldInfo[]>();

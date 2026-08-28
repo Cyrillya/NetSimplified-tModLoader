@@ -79,7 +79,7 @@ internal static class AutoSyncHandler
         if (enumInterfaceDeclared != null) {
             var elemType = enumInterfaceDeclared.GetGenericArguments()[0];
             var enumerable = (IEnumerable) value!;
-            var temp = enumerable.Cast<object?>().ToList();
+            var temp = enumerable.Cast<object>().ToList();
             bw.Write(temp.Count);
             foreach (var it in temp) SendValue(bw, it!, elemType, fieldInfo);
         }
