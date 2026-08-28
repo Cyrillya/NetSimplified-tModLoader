@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using NetSimplified.Syncing;
-using Terraria;
 using Terraria.ModLoader;
 
 namespace NetSimplified;
@@ -22,18 +22,19 @@ public class NetModuleLoader : ModSystem
     public static Mod CurrentMod;
 
     /// <summary>
-    ///     用于记录各 NetModule 的传输量
+    ///     网络数据监视器：记录各 NetModule 的收发流量与最近收发包日志。
+    ///     仅在通过 AddContent 注册本 ModSystem 后可用，客户端 UI 与服务器 ModCommand 均读取此实例。
     /// </summary>
-    public static NetModuleDiagnostics NetModuleDiagnosticsUI { get; private set; }
+    public static NetModuleDiagnostics Diagnostics { get; private set; }
 
     /// <inheritdoc />
     public override void PostSetupContent() {
-        NetModuleDiagnosticsUI = Main.dedServ ? null : new NetModuleDiagnostics(_modules);
+        Diagnostics = new NetModuleDiagnostics(_modules);
     }
 
     /// <inheritdoc />
     public override void PreSaveAndQuit() {
-        NetModuleDiagnosticsUI.Reset();
+        Diagnostics?.Reset();
     }
 
     // Helper: 判断 type 是否从一个全名为 baseFullName 的基类或接口派生（跨程序集场景）
@@ -116,7 +117,35 @@ public class NetModuleLoader : ModSystem
     /// </summary>
     public static void LoadNetModules() {
         LoadNetModulesFrom(typeof(NetModuleLoader).Assembly);
-        LoadNetModulesFrom(Assembly.GetCallingAssembly());
+        LoadNetModulesFrom(GetCallingModAssembly());
+    }
+
+    /// <summary>
+    ///     通过栈回溯获取调用方的程序集。<br />
+    ///     不使用 <see cref="Assembly.GetCallingAssembly()" />，因为它会在本方法被内联时返回错误的程序集，导致模组的 NetModule 无法被注册。
+    /// </summary>
+    private static Assembly GetCallingModAssembly() {
+        var self = typeof(NetModuleLoader).Assembly;
+        try {
+            var stack = new StackTrace();
+            for (var i = 1; i < stack.FrameCount; i++) {
+                var method = stack.GetFrame(i)?.GetMethod();
+                var asm = method?.DeclaringType?.Assembly;
+                if (asm == null || asm == self) continue;
+
+                // 跳过运行时/系统程序集
+                var name = asm.GetName().Name;
+                if (name.StartsWith("System", StringComparison.Ordinal)
+                    || name.StartsWith("mscorlib", StringComparison.Ordinal)
+                    || name.StartsWith("Microsoft.", StringComparison.Ordinal)
+                    || name == "netstandard") continue;
+                return asm;
+            }
+        }
+        catch {
+            // 栈回溯失败时回退到旧行为
+        }
+        return Assembly.GetCallingAssembly();
     }
 
     /// <summary>
