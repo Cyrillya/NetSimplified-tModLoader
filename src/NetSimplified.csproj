@@ -4,6 +4,7 @@
     <PropertyGroup>
         <AssemblyName>NetSimplified</AssemblyName>
         <PlatformTarget>AnyCPU</PlatformTarget>
+        <TargetFramework>net8.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <GenerateDocumentationFile>True</GenerateDocumentationFile>
         <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
@@ -18,6 +19,8 @@
         <FileVersion>2.1</FileVersion>
         <NeutralLanguage>zh-Hans</NeutralLanguage>
         <IsPackable>false</IsPackable>
+        <!-- NetSimplified 是类库而非模组，禁止 tModLoader 将其打包为 .tmod -->
+        <BuildMod>false</BuildMod>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="NetSimplifiedExample\**"/>

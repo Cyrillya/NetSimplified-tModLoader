@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
 using NetSimplified.Syncing;
 using Terraria;
 using Terraria.ID;
@@ -45,15 +44,20 @@ public abstract class NetModule
             if (Main.netMode != NetmodeID.SinglePlayer) {
                 if (Mod == null) throw new InvalidOperationException("NetModule.Mod 未被设置，请通过 NetModuleLoader.Register 或 LoadNetModulesFrom 加载模块");
                 var mp = Mod.GetPacket();
+
+                var diagnostics = NetModuleLoader.Diagnostics;
+                var payloadStart = diagnostics != null ? NetModuleDiagnostics.GetPacketPayloadStart(mp) : 0;
+
                 mp.Write(Type); // 包类型 ID
                 AutoSyncHandler.HandleAutoSend(this, mp);
                 Send(mp);
+
+                var payload = diagnostics != null ? NetModuleDiagnostics.CaptureSentPayload(mp, payloadStart) : null;
                 // 发送
                 mp.Send(toClient, ignoreClient);
 
-                var len = (ushort) mp.GetType().GetField("len", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(mp)!;
-                if (Main.netMode is NetmodeID.MultiplayerClient && Type >= 0)
-                    NetModuleLoader.NetModuleDiagnosticsUI?.CountSentMessage(Type, len - 4); // 4 bytes for the id
+                if (diagnostics != null && Type >= 0)
+                    diagnostics.CountSentMessage(Type, payload);
             }
 
             if (runLocally) Receive();
@@ -88,8 +92,11 @@ public abstract class NetModule
         module.Read(reader);
         module.Receive();
 
-        var length = (int) reader.BaseStream.Position - start;
-        if (Main.netMode is NetmodeID.MultiplayerClient && id >= 0)
-            NetModuleLoader.NetModuleDiagnosticsUI?.CountReadMessage(id, length - 4); // 4 bytes for the id
+        if (id >= 0) {
+            var end = (int) reader.BaseStream.Position;
+            var diagnostics = NetModuleLoader.Diagnostics;
+            if (diagnostics != null)
+                diagnostics.CountReadMessage(id, NetModuleDiagnostics.CaptureReceivedPayload(reader, start, end));
+        }
     }
 }
